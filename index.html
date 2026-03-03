@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math Legions</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Overlay UI -->
+        <div id="ui-layer">
+            <div id="top-bar">
+                <div id="level-indicator">Nível 1</div>
+                <div id="score-indicator">Moedas: <span id="coin-count">0</span></div>
+            </div>
+            
+            <div id="main-menu" class="screen active">
+                <h1>Math Legions</h1>
+                <p>Arraste para mover. Multiplique seu exército e derrote os inimigos!</p>
+                <button id="start-btn">JOGAR</button>
+            </div>
+
+            <div id="game-over-screen" class="screen">
+                <h1 id="end-title">Fim de Jogo!</h1>
+                <p id="end-message">Sua horda foi dizimada.</p>
+                <p class="stats">Nível: <span id="final-level">1</span></p>
+                <button id="restart-btn">TENTAR NOVAMENTE</button>
+            </div>
+
+            <div id="victory-screen" class="screen">
+                <h1 class="victory-title">VITÓRIA!</h1>
+                <p>Você destruiu a fortaleza inimiga!</p>
+                <p class="stats">Moedas ganhas: +<span id="level-coins">0</span></p>
+                <button id="next-level-btn">PRÓXIMO NÍVEL</button>
+            </div>
+            
+            <!-- Floating text container for combat/gates -->
+            <div id="floating-texts"></div>
+        </div>
+
+        <canvas id="game-canvas"></canvas>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
