@@ -185,7 +185,7 @@ class Gate {
     }
 
     draw(ctx, dy) {
-        let drawY = this.y - dy;
+        let drawY = this.y + dy; // Direction inverted: dy is negative as we go up
         if (drawY > canvas.height + 100 || drawY < -100) return;
 
         let midX = canvas.width / 2 + this.xOffset;
@@ -217,7 +217,7 @@ class Gate {
 
     checkCollision(hx, hy, dy) {
         if (this.passed) return;
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         let midX = canvas.width / 2 + this.xOffset;
         if (hy < drawY + this.height && hy > drawY) {
             this.passed = true;
@@ -255,7 +255,7 @@ class EnemyGroup {
 
     draw(ctx, dy) {
         if (this.count <= 0) return;
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         if (drawY > canvas.height + 100 || drawY < -100) return;
 
         ctx.fillStyle = '#ff3366';
@@ -271,7 +271,7 @@ class EnemyGroup {
 
     checkCollision(hx, hy, dy, dt) {
         if (this.count <= 0) return;
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         let dx = hx - this.x;
         let pdy = hy - drawY;
         let dist = Math.sqrt(dx * dx + pdy * pdy);
@@ -307,8 +307,8 @@ class Boss {
 
     draw(ctx, dy) {
         if (this.count <= 0) return;
-        let drawY = this.y - dy;
-        if (drawY > canvas.height + 200 || drawY < -200) return;
+        let drawY = this.y + dy;
+        if (drawY > canvas.height + 200 || drawY < -300) return;
 
         ctx.fillStyle = '#cc0033';
         ctx.fillRect(50, drawY, canvas.width - 100, this.height);
@@ -321,7 +321,7 @@ class Boss {
 
     checkCollision(hx, hy, dy, dt) {
         if (this.count <= 0) return;
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
 
         if (hy - playerRad < drawY + this.height && hy + playerRad > drawY) {
@@ -352,7 +352,7 @@ class MudZone {
         this.length = length;
     }
     draw(ctx, dy) {
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         if (drawY > canvas.height || drawY + this.length < 0) return;
         ctx.fillStyle = 'rgba(101, 67, 33, 0.4)';
         ctx.fillRect(0, drawY, canvas.width, this.length);
@@ -365,7 +365,7 @@ class MudZone {
         }
     }
     checkCollision(hx, hy, dy) {
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         if (hy > drawY && hy < drawY + this.length) {
             currentSpeedMult = 0.4;
         }
@@ -384,7 +384,7 @@ class Obstacle {
         if (this.type === 'saw') this.angle += 10 * dt;
     }
     draw(ctx, dy) {
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         if (drawY > canvas.height + 50 || drawY < -50) return;
         ctx.save();
         ctx.translate(this.x, drawY);
@@ -409,7 +409,7 @@ class Obstacle {
         ctx.restore();
     }
     checkCollision(hx, hy, dy) {
-        let drawY = this.y - dy;
+        let drawY = this.y + dy;
         let dx = hx - this.x;
         let pdy = hy - drawY;
         let dist = Math.sqrt(dx * dx + pdy * pdy);
@@ -439,13 +439,13 @@ function loadLevel(l) {
     horde.displayCount = 10;
     horde.x = canvas.width / 2;
     horde.targetX = canvas.width / 2;
-    horde.y = canvas.height * 0.8;
+    horde.y = canvas.height * 0.85;
 
-    let currentY = canvas.height;
-    let numSections = 3 + Math.floor(level / 2);
+    let currentY = horde.y - 400; // Start placing obstacles above player
+    let numSections = 5 + Math.floor(level / 2);
 
     for (let i = 0; i < numSections; i++) {
-        currentY += 600;
+        currentY -= 600; // Moving UP in coordinate space
 
         // Add Gate
         let typeL = '+'; let valL = Math.floor(Math.random() * 10) + level * 2;
@@ -458,14 +458,14 @@ function loadLevel(l) {
 
         // Add Obstacles or Enemies
         if (Math.random() > 0.5) {
-            entities.push(new EnemyGroup(currentY + 300, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
+            entities.push(new EnemyGroup(currentY - 300, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
         } else if (level > 3) {
-            entities.push(new Obstacle(currentY + 300, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
+            entities.push(new Obstacle(currentY - 300, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
         }
 
         // Mud Zone
         if (level > 4 && Math.random() > 0.7) {
-            entities.push(new MudZone(currentY + 450, 300));
+            entities.push(new MudZone(currentY - 450, 300));
         }
     }
 
@@ -475,13 +475,13 @@ function loadLevel(l) {
             x: Math.random() > 0.5 ? 20 : canvas.width - 20,
             y: d * 500,
             size: 20 + Math.random() * 30,
-            color: '#2a2a44'
+            color: 'rgba(255,255,255,0.1)'
         });
     }
 
-    currentY += 800;
+    currentY -= 800;
     bossLevelY = currentY;
-    let bossAmt = 20 + level * 25;
+    let bossAmt = 30 + level * 30;
     entities.push(new Boss(currentY, bossAmt));
 }
 
@@ -514,8 +514,8 @@ function victory() {
 function update(dt) {
     if (gameState !== 'PLAYING') return;
 
-    distanceTravelled += gameSpeed * currentSpeedMult * dt;
-    currentSpeedMult = 1.0; // Reset for next frame, MudZone will override
+    distanceTravelled -= gameSpeed * currentSpeedMult * dt; // Negative: going UP
+    currentSpeedMult = 1.0;
 
     // Shake decay
     if (shakeAmount > 0) shakeAmount -= dt * 20;
@@ -533,11 +533,11 @@ function update(dt) {
         e.checkCollision(horde.x, horde.y, distanceTravelled, dt);
     }
 
-    // Make sure we stop if boss reached and not dead ? No, boss collision handles it
-    if (distanceTravelled > bossLevelY + 300 && gameState === 'PLAYING') {
-        // If passed boss without touching? (Should not happen since boss spans width)
-        // just in case:
-        victory();
+    // Win condition - reaching boss Y
+    // Since bossLevelY is < horde.y, we check if distanceTravelled + bossLevelY is near horde.y
+    if (distanceTravelled + bossLevelY > horde.y + 200 && gameState === 'PLAYING') {
+        // Fallback if boss not hit somehow
+        // victory(); 
     }
 }
 
@@ -578,23 +578,32 @@ function drawHorde() {
 }
 
 function drawGrid(dy) {
+    // Scrolling background gradient
+    let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#1a1a2e');
+    grad.addColorStop(1, '#16213e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     let gridS = 50;
     let offset = dy % gridS;
-    for (let y = -offset; y < canvas.height; y += gridS) {
+    for (let y = offset; y < canvas.height; y += gridS) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
     }
     for (let x = 0; x < canvas.width; x += gridS) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
     }
 
-    // Draw decorations
+    // Draw decorations (Parallax effect)
     for (let dec of decorations) {
-        let drawY = (dec.y - dy) % (decorations.length * 500);
+        let drawY = (dec.y + dy) % (decorations.length * 500);
         if (drawY < -500) drawY += decorations.length * 500;
         ctx.fillStyle = dec.color;
-        ctx.fillRect(dec.x - dec.size / 2, drawY, dec.size, dec.size);
+        ctx.beginPath();
+        ctx.arc(dec.x, drawY, dec.size / 4, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
