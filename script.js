@@ -34,6 +34,12 @@ let level = 1;
 let coins = 0;
 let distanceTravelled = 0;
 let gameSpeed = 300; // pixels per second moving forward
+let currentSpeedMult = 1.0;
+let shakeAmount = 0;
+
+function applyShake(amt) {
+    shakeAmount = Math.max(shakeAmount, amt);
+}
 
 // Audio Context for "pops"
 let audioCtx;
@@ -310,7 +316,7 @@ class Boss {
         ctx.fillStyle = 'white';
         ctx.font = 'bold 30px Outfit';
         ctx.textAlign = 'center';
-        ctx.fillText(`CHEFÃO: ${Math.floor(this.count)}`, canvas.width / 2, drawY + this.height / 2 + 10);
+        ctx.fillText(`FORTALEZA: ${Math.floor(this.count)}`, canvas.width / 2, drawY + this.height / 2 + 10);
     }
 
     checkCollision(hx, hy, dy, dt) {
@@ -319,7 +325,7 @@ class Boss {
         let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
 
         if (hy - playerRad < drawY + this.height && hy + playerRad > drawY) {
-            let damage = 200 * dt; // fast boss drain
+            let damage = 250 * dt;
             let drain = Math.min(this.count, damage);
             drain = Math.min(horde.count, drain);
 
@@ -327,6 +333,7 @@ class Boss {
             horde.count -= drain;
             horde.displayCount = horde.count;
 
+            applyShake(5);
             spawnParticles(canvas.width / 2, drawY + this.height, '#ffcc00', 5);
             playPopSound(100, 'square');
 
@@ -339,13 +346,93 @@ class Boss {
     }
 }
 
+class MudZone {
+    constructor(y, length) {
+        this.y = y;
+        this.length = length;
+    }
+    draw(ctx, dy) {
+        let drawY = this.y - dy;
+        if (drawY > canvas.height || drawY + this.length < 0) return;
+        ctx.fillStyle = 'rgba(101, 67, 33, 0.4)';
+        ctx.fillRect(0, drawY, canvas.width, this.length);
+        // Texture
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        for (let i = 0; i < 10; i++) {
+            ctx.beginPath();
+            ctx.arc((i * 77) % canvas.width, drawY + (i * 33) % this.length, 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    checkCollision(hx, hy, dy) {
+        let drawY = this.y - dy;
+        if (hy > drawY && hy < drawY + this.length) {
+            currentSpeedMult = 0.4;
+        }
+    }
+}
+
+class Obstacle {
+    constructor(y, x, type = 'wall') {
+        this.y = y;
+        this.x = x;
+        this.type = type;
+        this.radius = 30;
+        this.angle = 0;
+    }
+    update(dt) {
+        if (this.type === 'saw') this.angle += 10 * dt;
+    }
+    draw(ctx, dy) {
+        let drawY = this.y - dy;
+        if (drawY > canvas.height + 50 || drawY < -50) return;
+        ctx.save();
+        ctx.translate(this.x, drawY);
+        if (this.type === 'saw') {
+            ctx.rotate(this.angle);
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                let a = (i / 8) * Math.PI * 2;
+                ctx.lineTo(Math.cos(a) * 40, Math.sin(a) * 40);
+                ctx.lineTo(Math.cos(a + 0.2) * 30, Math.sin(a + 0.2) * 30);
+            }
+            ctx.fill();
+            ctx.fillStyle = '#999';
+            ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fill();
+        } else {
+            ctx.fillStyle = '#444';
+            ctx.fillRect(-this.radius, -10, this.radius * 2, 20);
+            ctx.strokeStyle = '#ff3366';
+            ctx.strokeRect(-this.radius, -10, this.radius * 2, 20);
+        }
+        ctx.restore();
+    }
+    checkCollision(hx, hy, dy) {
+        let drawY = this.y - dy;
+        let dx = hx - this.x;
+        let pdy = hy - drawY;
+        let dist = Math.sqrt(dx * dx + pdy * pdy);
+        let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
+        if (dist < this.radius + playerRad) {
+            horde.count = Math.max(1, horde.count - 1);
+            applyShake(10);
+            playPopSound(100, 'sawtooth');
+            spawnParticles(hx, hy, '#ff3366', 5);
+        }
+    }
+}
+
 // Level Gen
 let bossLevelY = 0;
+let decorations = [];
 function loadLevel(l) {
     level = l;
     txtLevelIndicator.innerText = `Nível ${level}`;
     entities = [];
+    decorations = [];
     distanceTravelled = 0;
+    currentSpeedMult = 1.0;
 
     // reset horde
     horde.count = 10;
@@ -355,46 +442,46 @@ function loadLevel(l) {
     horde.y = canvas.height * 0.8;
 
     let currentY = canvas.height;
-    let numGates = 2 + Math.floor(level / 3);
+    let numSections = 3 + Math.floor(level / 2);
 
-    for (let i = 0; i < numGates; i++) {
-        currentY += 500;
+    for (let i = 0; i < numSections; i++) {
+        currentY += 600;
 
+        // Add Gate
         let typeL = '+'; let valL = Math.floor(Math.random() * 10) + level * 2;
         let typeR = '*'; let valR = 2;
-
-        if (level > 2) {
-            let rnd = Math.random();
-            if (rnd > 0.5) { typeL = '-'; typeR = '+'; }
-        }
-        if (level > 5) {
-            let rnd = Math.random();
-            if (rnd > 0.7) { typeL = '-'; typeR = '/'; }
-        }
-
-        // Randomize
+        if (level > 2 && Math.random() > 0.5) { typeL = '-'; typeR = '+'; }
+        if (level > 5 && Math.random() > 0.3) { typeL = '/'; typeR = '*'; }
         if (Math.random() > 0.5) [typeL, valL, typeR, valR] = [typeR, valR, typeL, valL];
-        if (typeL === '/') valL = Math.max(2, Math.floor(Math.random() * 3));
-        if (typeR === '/') valR = Math.max(2, Math.floor(Math.random() * 3));
-        if (typeL === '*') valL = Math.max(2, Math.floor(Math.random() * 3));
-        if (typeR === '*') valR = Math.max(2, Math.floor(Math.random() * 3));
 
-        entities.push(new Gate(currentY, typeL, valL, typeR, valR));
+        entities.push(new Gate(currentY, typeL, valL, typeR, valR, level > 5 && Math.random() > 0.4));
 
-        // Random Enemies between gates
-        if (level > 2 && Math.random() > 0.4) {
-            entities.push(new EnemyGroup(currentY + 250, 5 + level * 3, canvas.width / 4 + Math.random() * (canvas.width / 2)));
+        // Add Obstacles or Enemies
+        if (Math.random() > 0.5) {
+            entities.push(new EnemyGroup(currentY + 300, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
+        } else if (level > 3) {
+            entities.push(new Obstacle(currentY + 300, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
         }
 
-        // Update level building for moving objects
-        if (i > 0 && level > 5 && Math.random() > 0.5) {
-            entities[entities.length - 1].canMove = true;
+        // Mud Zone
+        if (level > 4 && Math.random() > 0.7) {
+            entities.push(new MudZone(currentY + 450, 300));
         }
+    }
+
+    // Decorate sides
+    for (let d = 0; d < 20; d++) {
+        decorations.push({
+            x: Math.random() > 0.5 ? 20 : canvas.width - 20,
+            y: d * 500,
+            size: 20 + Math.random() * 30,
+            color: '#2a2a44'
+        });
     }
 
     currentY += 800;
     bossLevelY = currentY;
-    let bossAmt = 15 + level * 20;
+    let bossAmt = 20 + level * 25;
     entities.push(new Boss(currentY, bossAmt));
 }
 
@@ -427,7 +514,12 @@ function victory() {
 function update(dt) {
     if (gameState !== 'PLAYING') return;
 
-    distanceTravelled += gameSpeed * dt;
+    distanceTravelled += gameSpeed * currentSpeedMult * dt;
+    currentSpeedMult = 1.0; // Reset for next frame, MudZone will override
+
+    // Shake decay
+    if (shakeAmount > 0) shakeAmount -= dt * 20;
+    else shakeAmount = 0;
 
     // Smooth movement X
     horde.x += (horde.targetX - horde.x) * 10 * dt;
@@ -496,10 +588,23 @@ function drawGrid(dy) {
     for (let x = 0; x < canvas.width; x += gridS) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
     }
+
+    // Draw decorations
+    for (let dec of decorations) {
+        let drawY = (dec.y - dy) % (decorations.length * 500);
+        if (drawY < -500) drawY += decorations.length * 500;
+        ctx.fillStyle = dec.color;
+        ctx.fillRect(dec.x - dec.size / 2, drawY, dec.size, dec.size);
+    }
 }
 
 function draw(dt) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    if (shakeAmount > 0) {
+        ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
+    }
 
     drawGrid(distanceTravelled);
 
@@ -527,6 +632,8 @@ function draw(dt) {
             ctx.globalAlpha = 1.0;
         }
     }
+
+    ctx.restore();
 }
 
 function gameLoop(time) {
