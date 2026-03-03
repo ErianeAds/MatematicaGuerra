@@ -36,10 +36,17 @@ let distanceTravelled = 0;
 let gameSpeed = 300; // pixels per second moving forward
 
 // Audio Context for "pops"
-const AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContext();
+let audioCtx;
+function initAudio() {
+    if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
 
 function playPopSound(freq = 400, type = 'sine') {
+    if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
@@ -523,6 +530,7 @@ function draw(dt) {
 }
 
 function gameLoop(time) {
+    if (!lastTime) lastTime = time;
     let dt = (time - lastTime) / 1000;
     if (dt > 0.1) dt = 0.1; // Cap delta
     lastTime = time;
@@ -535,19 +543,21 @@ function gameLoop(time) {
 
 // Events
 btnStart.addEventListener('click', () => {
+    initAudio();
     uiMainMenu.classList.remove('active');
     loadLevel(1);
     gameState = 'PLAYING';
-    audioCtx.resume();
 });
 
 btnRestart.addEventListener('click', () => {
+    initAudio();
     uiGameOver.classList.remove('active');
     loadLevel(level);
     gameState = 'PLAYING';
 });
 
 btnNextLevel.addEventListener('click', () => {
+    initAudio();
     uiVictory.classList.remove('active');
     loadLevel(level + 1);
     gameState = 'PLAYING';
