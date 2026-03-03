@@ -1,0 +1,556 @@
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const uiLayer = document.getElementById('ui-layer');
+
+// UI Elements
+const uiMainMenu = document.getElementById('main-menu');
+const uiGameOver = document.getElementById('game-over-screen');
+const uiVictory = document.getElementById('victory-screen');
+
+const btnStart = document.getElementById('start-btn');
+const btnRestart = document.getElementById('restart-btn');
+const btnNextLevel = document.getElementById('next-level-btn');
+
+const txtLevelIndicator = document.getElementById('level-indicator');
+const txtCoinCount = document.getElementById('coin-count');
+
+const txtFinalLevel = document.getElementById('final-level');
+const txtLevelCoins = document.getElementById('level-coins');
+const endMessage = document.getElementById('end-message');
+const endTitle = document.getElementById('end-title');
+
+// Resize handling
+function resize() {
+    canvas.width = window.innerWidth > 500 ? 500 : window.innerWidth;
+    canvas.height = window.innerHeight > 900 ? 900 : window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Game State
+let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, VICTORY
+let lastTime = 0;
+let level = 1;
+let coins = 0;
+let distanceTravelled = 0;
+let gameSpeed = 300; // pixels per second moving forward
+
+// Audio Context for "pops"
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+function playPopSound(freq = 400, type = 'sine') {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + 0.1);
+
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+}
+
+// Particle System
+let particles = [];
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 200 + 50;
+        particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1.0,
+            color: color,
+            size: Math.random() * 4 + 2
+        });
+    }
+}
+
+// Floating UI Texts
+function spawnFloatingText(x, y, text, type = 'positive') {
+    const el = document.createElement('div');
+    el.className = `floating-text ${type}`;
+    el.innerText = text;
+
+    // Convert canvas coords to viewport pixels relative to uiLayer
+    const rect = canvas.getBoundingClientRect();
+    const uiRect = uiLayer.getBoundingClientRect();
+
+    const posX = x + (rect.left - uiRect.left);
+    const posY = y + (rect.top - uiRect.top);
+
+    el.style.left = `${posX}px`;
+    el.style.top = `${posY}px`;
+
+    uiLayer.appendChild(el);
+    setTimeout(() => {
+        el.remove();
+    }, 1000);
+}
+
+// Player (Horde)
+let horde = {
+    x: canvas.width / 2,
+    y: canvas.height * 0.8,
+    count: 10,
+    targetX: canvas.width / 2,
+    baseRadius: 2,
+    displayCount: 10
+};
+
+// Input
+let isDragging = false;
+let startX = 0;
+let hordeStartX = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+    if (gameState !== 'PLAYING') return;
+    isDragging = true;
+    startX = e.touches[0].clientX;
+    hordeStartX = horde.targetX;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    if (!isDragging || gameState !== 'PLAYING') return;
+    let dx = e.touches[0].clientX - startX;
+    horde.targetX = hordeStartX + dx;
+    horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => isDragging = false);
+
+canvas.addEventListener('mousedown', (e) => {
+    if (gameState !== 'PLAYING') return;
+    isDragging = true;
+    startX = e.clientX;
+    hordeStartX = horde.targetX;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!isDragging || gameState !== 'PLAYING') return;
+    let dx = e.clientX - startX;
+    horde.targetX = hordeStartX + dx;
+    horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
+});
+
+canvas.addEventListener('mouseup', () => isDragging = false);
+
+// World Objects
+let entities = [];
+
+class Gate {
+    constructor(y, typeL, valL, typeR, valR, canMove = false) {
+        this.y = y;
+        this.typeL = typeL; // '+', '-', '*', '/'
+        this.valL = valL;
+        this.typeR = typeR;
+        this.valR = valR;
+        this.height = 80;
+        this.width = canvas.width;
+        this.passed = false;
+        this.canMove = canMove;
+        this.xOffset = 0;
+        this.moveDir = 1;
+        this.moveSpeed = 80;
+    }
+
+    update(dt) {
+        if (this.canMove) {
+            this.xOffset += this.moveDir * this.moveSpeed * dt;
+            if (this.xOffset > 50 || this.xOffset < -50) this.moveDir *= -1;
+        }
+    }
+
+    draw(ctx, dy) {
+        let drawY = this.y - dy;
+        if (drawY > canvas.height + 100 || drawY < -100) return;
+
+        let midX = canvas.width / 2 + this.xOffset;
+
+        ctx.globalAlpha = 0.5;
+        // Left Gate
+        let colorL = (this.typeL === '+' || this.typeL === '*') ? '#00f0ff' : '#ff3366';
+        ctx.fillStyle = colorL;
+        ctx.fillRect(0, drawY, midX, this.height);
+
+        // Right Gate
+        let colorR = (this.typeR === '+' || this.typeR === '*') ? '#00f0ff' : '#ff3366';
+        ctx.fillStyle = colorR;
+        ctx.fillRect(midX, drawY, canvas.width - midX, this.height);
+        ctx.globalAlpha = 1.0;
+
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = colorL;
+        ctx.strokeRect(0, drawY, midX, this.height);
+        ctx.strokeStyle = colorR;
+        ctx.strokeRect(midX, drawY, canvas.width - midX, this.height);
+
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${this.typeL}${this.valL}`, midX / 2, drawY + this.height / 2 + 8);
+        ctx.fillText(`${this.typeR}${this.valR}`, midX + (canvas.width - midX) / 2, drawY + this.height / 2 + 8);
+    }
+
+    checkCollision(hx, hy, dy) {
+        if (this.passed) return;
+        let drawY = this.y - dy;
+        let midX = canvas.width / 2 + this.xOffset;
+        if (hy < drawY + this.height && hy > drawY) {
+            this.passed = true;
+            let onLeft = hx < midX;
+            let type = onLeft ? this.typeL : this.typeR;
+            let val = onLeft ? this.valL : this.valR;
+
+            let oldAmt = horde.count;
+            if (type === '+') horde.count += val;
+            if (type === '-') horde.count = Math.max(1, horde.count - val);
+            if (type === '*') horde.count *= val;
+            if (type === '/') horde.count = Math.max(1, Math.floor(horde.count / val));
+
+            let diff = horde.count - oldAmt;
+            if (diff > 0) {
+                spawnFloatingText(hx, hy, `+${diff}`, 'positive');
+                playPopSound(600, 'square');
+                spawnParticles(hx, hy, '#00f0ff', 20);
+            } else if (diff < 0) {
+                spawnFloatingText(hx, hy, `${diff}`, 'negative');
+                playPopSound(200, 'sawtooth');
+            }
+        }
+    }
+}
+
+class EnemyGroup {
+    constructor(y, count, xOffset) {
+        this.y = y;
+        this.count = count;
+        this.initialCount = count;
+        this.x = xOffset;
+        this.radius = Math.min(60, 20 + Math.sqrt(count) * 2);
+    }
+
+    draw(ctx, dy) {
+        if (this.count <= 0) return;
+        let drawY = this.y - dy;
+        if (drawY > canvas.height + 100 || drawY < -100) return;
+
+        ctx.fillStyle = '#ff3366';
+        ctx.beginPath();
+        ctx.arc(this.x, drawY, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 20px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.floor(this.count), this.x, drawY + 8);
+    }
+
+    checkCollision(hx, hy, dy, dt) {
+        if (this.count <= 0) return;
+        let drawY = this.y - dy;
+        let dx = hx - this.x;
+        let pdy = hy - drawY;
+        let dist = Math.sqrt(dx * dx + pdy * pdy);
+
+        let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
+        if (dist < this.radius + playerRad) {
+            // Combat frame (anulação 1:1, depends on dt to make it feel continuous)
+            let damage = 50 * dt; // Drain rate per second
+            if (damage < 1) damage = 1; // Minimum drain
+
+            let drain = Math.min(this.count, damage);
+            drain = Math.min(horde.count, drain);
+
+            this.count -= drain;
+            horde.count -= drain;
+            horde.displayCount = horde.count; // Snap for combat
+            spawnParticles(hx + (Math.random() - 0.5) * 20, hy - 20, '#ff3366', 2);
+            playPopSound(150 + Math.random() * 50, 'sawtooth');
+
+            if (horde.count <= 0) {
+                gameOver();
+            }
+        }
+    }
+}
+
+class Boss {
+    constructor(y, count) {
+        this.y = y;
+        this.count = count;
+        this.height = 150;
+    }
+
+    draw(ctx, dy) {
+        if (this.count <= 0) return;
+        let drawY = this.y - dy;
+        if (drawY > canvas.height + 200 || drawY < -200) return;
+
+        ctx.fillStyle = '#cc0033';
+        ctx.fillRect(50, drawY, canvas.width - 100, this.height);
+
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 30px Outfit';
+        ctx.textAlign = 'center';
+        ctx.fillText(`CHEFÃO: ${Math.floor(this.count)}`, canvas.width / 2, drawY + this.height / 2 + 10);
+    }
+
+    checkCollision(hx, hy, dy, dt) {
+        if (this.count <= 0) return;
+        let drawY = this.y - dy;
+        let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
+
+        if (hy - playerRad < drawY + this.height && hy + playerRad > drawY) {
+            let damage = 200 * dt; // fast boss drain
+            let drain = Math.min(this.count, damage);
+            drain = Math.min(horde.count, drain);
+
+            this.count -= drain;
+            horde.count -= drain;
+            horde.displayCount = horde.count;
+
+            spawnParticles(canvas.width / 2, drawY + this.height, '#ffcc00', 5);
+            playPopSound(100, 'square');
+
+            if (this.count <= 0) {
+                victory();
+            } else if (horde.count <= 0) {
+                gameOver();
+            }
+        }
+    }
+}
+
+// Level Gen
+let bossLevelY = 0;
+function loadLevel(l) {
+    level = l;
+    txtLevelIndicator.innerText = `Nível ${level}`;
+    entities = [];
+    distanceTravelled = 0;
+
+    // reset horde
+    horde.count = 10;
+    horde.displayCount = 10;
+    horde.x = canvas.width / 2;
+    horde.targetX = canvas.width / 2;
+    horde.y = canvas.height * 0.8;
+
+    let currentY = canvas.height;
+    let numGates = 2 + Math.floor(level / 3);
+
+    for (let i = 0; i < numGates; i++) {
+        currentY += 500;
+
+        let typeL = '+'; let valL = Math.floor(Math.random() * 10) + level * 2;
+        let typeR = '*'; let valR = 2;
+
+        if (level > 2) {
+            let rnd = Math.random();
+            if (rnd > 0.5) { typeL = '-'; typeR = '+'; }
+        }
+        if (level > 5) {
+            let rnd = Math.random();
+            if (rnd > 0.7) { typeL = '-'; typeR = '/'; }
+        }
+
+        // Randomize
+        if (Math.random() > 0.5) [typeL, valL, typeR, valR] = [typeR, valR, typeL, valL];
+        if (typeL === '/') valL = Math.max(2, Math.floor(Math.random() * 3));
+        if (typeR === '/') valR = Math.max(2, Math.floor(Math.random() * 3));
+        if (typeL === '*') valL = Math.max(2, Math.floor(Math.random() * 3));
+        if (typeR === '*') valR = Math.max(2, Math.floor(Math.random() * 3));
+
+        entities.push(new Gate(currentY, typeL, valL, typeR, valR));
+
+        // Random Enemies between gates
+        if (level > 2 && Math.random() > 0.4) {
+            entities.push(new EnemyGroup(currentY + 250, 5 + level * 3, canvas.width / 4 + Math.random() * (canvas.width / 2)));
+        }
+
+        // Update level building for moving objects
+        if (i > 0 && level > 5 && Math.random() > 0.5) {
+            entities[entities.length - 1].canMove = true;
+        }
+    }
+
+    currentY += 800;
+    bossLevelY = currentY;
+    let bossAmt = 15 + level * 20;
+    entities.push(new Boss(currentY, bossAmt));
+}
+
+function gameOver() {
+    gameState = 'GAMEOVER';
+    txtFinalLevel.innerText = level;
+    endMessage.innerText = "Sua horda foi dizimada.";
+    endTitle.innerText = "Fim de Jogo!";
+    uiGameOver.classList.add('active');
+}
+
+function victory() {
+    gameState = 'VICTORY';
+    let reward = Math.floor(horde.count * (1 + level * 0.1));
+    coins += reward;
+    txtCoinCount.innerText = coins;
+    txtLevelCoins.innerText = reward;
+    uiVictory.classList.add('active');
+
+    // Celebration particles
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            spawnParticles(canvas.width / 2, canvas.height / 2, '#ffcc00', 50);
+            playPopSound(800, 'sine');
+        }, i * 200);
+    }
+}
+
+// Loop
+function update(dt) {
+    if (gameState !== 'PLAYING') return;
+
+    distanceTravelled += gameSpeed * dt;
+
+    // Smooth movement X
+    horde.x += (horde.targetX - horde.x) * 10 * dt;
+
+    // Smooth display count (Juiciness for UI)
+    horde.displayCount += (horde.count - horde.displayCount) * 5 * dt;
+
+    // EntCollisions and Updates
+    for (let e of entities) {
+        if (e.update) e.update(dt);
+        e.checkCollision(horde.x, horde.y, distanceTravelled, dt);
+    }
+
+    // Make sure we stop if boss reached and not dead ? No, boss collision handles it
+    if (distanceTravelled > bossLevelY + 300 && gameState === 'PLAYING') {
+        // If passed boss without touching? (Should not happen since boss spans width)
+        // just in case:
+        victory();
+    }
+}
+
+function drawHorde() {
+    if (horde.displayCount <= 0.5) return;
+
+    // Draw a big circle representing the group
+    let radius = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
+
+    // Glow
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00f0ff';
+    ctx.fillStyle = '#005aff';
+    ctx.beginPath();
+    ctx.arc(horde.x, horde.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Details (dots inside)
+    ctx.fillStyle = '#00f0ff';
+    let maxDots = Math.min(50, Math.floor(horde.displayCount));
+    for (let i = 0; i < maxDots; i++) {
+        let angle = i * 2.4; // golden ratio spiral
+        let rad = Math.sqrt(i) * (radius / Math.sqrt(maxDots)) * 0.8;
+        let dx = Math.cos(angle) * rad;
+        let dy = Math.sin(angle) * rad;
+        ctx.beginPath();
+        ctx.arc(horde.x + dx, horde.y + dy, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Number text
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 24px Outfit';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(Math.floor(horde.displayCount), horde.x, horde.y - radius - 15);
+}
+
+function drawGrid(dy) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    let gridS = 50;
+    let offset = dy % gridS;
+    for (let y = -offset; y < canvas.height; y += gridS) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+    for (let x = 0; x < canvas.width; x += gridS) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+}
+
+function draw(dt) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawGrid(distanceTravelled);
+
+    // Draw Entities
+    for (let e of entities) {
+        e.draw(ctx, distanceTravelled);
+    }
+
+    if (gameState === 'PLAYING') drawHorde();
+
+    // Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt * 2;
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+        } else {
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+}
+
+function gameLoop(time) {
+    let dt = (time - lastTime) / 1000;
+    if (dt > 0.1) dt = 0.1; // Cap delta
+    lastTime = time;
+
+    update(dt);
+    draw(dt);
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Events
+btnStart.addEventListener('click', () => {
+    uiMainMenu.classList.remove('active');
+    loadLevel(1);
+    gameState = 'PLAYING';
+    audioCtx.resume();
+});
+
+btnRestart.addEventListener('click', () => {
+    uiGameOver.classList.remove('active');
+    loadLevel(level);
+    gameState = 'PLAYING';
+});
+
+btnNextLevel.addEventListener('click', () => {
+    uiVictory.classList.remove('active');
+    loadLevel(level + 1);
+    gameState = 'PLAYING';
+});
+
+requestAnimationFrame(gameLoop);
