@@ -20,8 +20,17 @@ const CFG = {
 let state = 'MENU', lastTime = 0, level = 1, coins = 0, energy = 100, arrows = 5, totalKills = 0, dist = 0, gSpeed = CFG.speed, shake = 0, time = 0, combo = 1, comboT = 0, sShield = 0, entities = [], particles = [], projectiles = [], decors = [];
 let h = { x: 250, y: 750, count: 10, targetX: 250, dCount: 10, units: [], vx: 0, tilt: 0, dodge: 0, weapon: 'spear', wTimers: { spear: 0, bow: 0, cannon: 0 }, cooldowns: { arrow: 0, shield: 0, fire: 0, heal: 0 }, firePower: 1 };
 
+let audioCtx;
 const playSnd = (f, t = 'sine', d = 0.1, v = 0.05) => {
-    try { const a = new (window.AudioContext || window.webkitAudioContext)(); const o = a.createOscillator(), g = a.createGain(); o.type = t; o.frequency.setValueAtTime(f, a.currentTime); g.gain.setValueAtTime(v, a.currentTime); o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + d); } catch (e) { }
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
+        g.gain.setValueAtTime(v, audioCtx.currentTime);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(); o.stop(audioCtx.currentTime + d);
+    } catch (e) { }
 };
 
 const spawnP = (x, y, color, n, type) => { for (let i = 0; i < n; i++) { let a = Math.random() * Math.PI * 2, s = Math.random() * 200 + 50; particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, l: 1, color, s: Math.random() * 5 + 2, t: type }); } };

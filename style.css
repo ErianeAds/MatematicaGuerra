@@ -262,6 +262,7 @@ canvas {
     text-align: center;
     color: #ffd966;
     z-index: 100;
+    pointer-events: auto;
     animation: fadeIn 0.4s ease-out;
 }
 
@@ -285,6 +286,7 @@ h1 {
     font-weight: 900;
     background: linear-gradient(180deg, #ffd966, #ff8800);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     text-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
     margin-bottom: 20px;
