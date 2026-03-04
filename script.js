@@ -310,64 +310,161 @@ class Gate {
     }
 }
 
+class EnemyUnit {
+    constructor(isLeader = false) {
+        this.relX = (Math.random() - 0.5) * 40;
+        this.relY = (Math.random() - 0.5) * 40;
+        this.isLeader = isLeader;
+        this.scale = 1.0;
+        this.speedBoost = (Math.random() > 0.7) ? Math.random() * 60 : 0; // Spearhead boost
+        this.dead = false;
+    }
+}
+
 class EnemyGroup {
     constructor(y, count, xOffset) {
         this.y = y; // World Y coordinate
         this.count = count;
         this.initialCount = count;
         this.x = xOffset;
-        this.radius = Math.min(60, 20 + Math.sqrt(count) * 2);
+        this.flashTimer = 0;
+        this.dispersing = false;
+        this.units = [];
+
+        // Visual Hierarchy: Formation based on count
+        let width = Math.min(canvas.width * 0.8, 40 + Math.sqrt(count) * 15);
+        let depth = 40 + Math.sqrt(count) * 10;
+
+        for (let i = 0; i < count; i++) {
+            let u = new EnemyUnit(i === 0); // First unit is leader
+            // Formation: Wall if high count, Column if low
+            if (count > 100) { // WALL
+                u.relX = (Math.random() - 0.5) * width;
+                u.relY = (Math.random() - 0.5) * depth;
+            } else { // COLUMN
+                u.relX = (Math.random() - 0.5) * 40;
+                u.relY = (Math.random() - 0.5) * (count * 5);
+            }
+            this.units.push(u);
+        }
     }
 
     update(dt) {
-        // Enemiies move towards the player's Y
-        if (CONFIG.DIRECAO === 'CIMA') {
-            this.y += CONFIG.VELOCIDADE_INIMIGO * dt;
-        } else {
-            this.y -= CONFIG.VELOCIDADE_INIMIGO * dt;
+        if (this.units.length === 0) return;
+
+        // Swarm AI: Move towards player (Funneling) as they get closer
+        let worldHordeY = (CONFIG.DIRECAO === 'CIMA' ? -distanceTravelled + horde.y : distanceTravelled + horde.y);
+        let distY = Math.abs(this.y - worldHordeY);
+
+        if (!this.dispersing && distY < 600) {
+            // Funneling: attraction increases as distance closes
+            let attraction = (1 - (distY / 600)) * 2;
+            this.x += (horde.x - this.x) * attraction * dt;
+        }
+
+        // Basic advancement
+        let move = CONFIG.VELOCIDADE_INIMIGO * dt;
+        if (CONFIG.DIRECAO === 'CIMA') this.y += move;
+        else this.y -= move;
+
+        if (this.flashTimer > 0) this.flashTimer -= dt;
+
+        // Dispersal logic
+        if (this.dispersing) {
+            for (let u of this.units) {
+                u.relX += (u.relX > 0 ? 300 : -300) * dt;
+                u.relY += (CONFIG.DIRECAO === 'CIMA' ? -200 : 200) * dt;
+            }
         }
     }
 
     draw(ctx, dy) {
-        if (this.count <= 0) return;
+        if (this.units.length === 0) return;
         let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
-        if (drawY > canvas.height + 100 || drawY < -100) return;
+        if (drawY > canvas.height + 400 || drawY < -400) return;
 
-        ctx.fillStyle = '#ff3366';
-        ctx.beginPath();
-        ctx.arc(this.x, drawY, this.radius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.save();
+        if (this.flashTimer > 0) {
+            ctx.filter = 'brightness(200%)';
+        }
 
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 20px Outfit';
-        ctx.textAlign = 'center';
-        ctx.fillText(Math.floor(this.count), this.x, drawY + 8);
+        for (let u of this.units) {
+            let ux = this.x + u.relX;
+            let uy = drawY + u.relY + (CONFIG.DIRECAO === 'CIMA' ? u.speedBoost * 0.1 : -u.speedBoost * 0.1);
+
+            let size = u.isLeader ? 8 : 5;
+            ctx.fillStyle = u.isLeader ? '#990022' : '#ff3366';
+
+            ctx.beginPath();
+            ctx.arc(ux, uy, size, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (u.isLeader) {
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+
+        // Badge
+        if (!this.dispersing) {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.roundRect(this.x - 20, drawY - 60, 40, 20, 5);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 14px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.units.length, this.x, drawY - 45);
+        }
     }
 
     checkCollision(hx, hy, dy, dt) {
-        if (this.count <= 0) return;
+        if (this.units.length === 0 || this.dispersing) return;
         let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
+
         let dx = hx - this.x;
         let pdy = hy - drawY;
         let dist = Math.sqrt(dx * dx + pdy * pdy);
+        let playerRad = Math.min(70, 25 + Math.sqrt(horde.count) * 2.5);
 
-        let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
-        if (dist < this.radius + playerRad) {
-            // Combat frame (anulação 1:1, depends on dt to make it feel continuous)
-            let damage = 50 * dt; // Drain rate per second
-            if (damage < 1) damage = 1; // Minimum drain
+        if (dist < playerRad + 50) { // Close enough to start individual unit combat
+            let combatThisFrame = Math.ceil(150 * dt); // Units to kill per second
+            let kills = 0;
 
-            let drain = Math.min(this.count, damage);
-            drain = Math.min(horde.count, drain);
+            for (let i = 0; i < combatThisFrame; i++) {
+                if (this.units.length > 0 && horde.units.length > 0) {
+                    let u = this.units.pop();
 
-            this.count -= drain;
-            updateHordeCount(horde.count - drain);
-            spawnParticles(hx + (Math.random() - 0.5) * 20, hy - 20, '#ff3366', 2);
-            playPopSound(150 + Math.random() * 50, 'sawtooth');
+                    // If leader dies, disperse the rest
+                    if (u.isLeader && this.units.length > 0) {
+                        this.dispersing = true;
+                        spawnFloatingText(this.x, drawY, "DEBANDADA!", "negative");
+                    }
 
-            if (horde.count <= 0) {
-                gameOver();
+                    updateHordeCount(horde.count - 1);
+                    kills++;
+
+                    // Particles for 1:1 annihilation
+                    spawnParticles(this.x + u.relX, drawY + u.relY, '#ff3366', 2);
+                    spawnParticles(hx, hy, '#00f0ff', 2);
+                }
             }
+
+            if (kills > 0) {
+                playPopSound(100 + Math.random() * 50, 'sawtooth');
+                applyShake(2);
+                if (kills > 10) {
+                    this.flashTimer = 0.05;
+                    applyShake(5);
+                }
+                // Visual Knockback (push player slightly back)
+                if (CONFIG.DIRECAO === 'CIMA') distanceTravelled -= 50 * dt;
+                else distanceTravelled += 50 * dt;
+            }
+
+            if (horde.count <= 0) gameOver();
         }
     }
 }
