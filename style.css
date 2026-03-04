@@ -2,11 +2,11 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Outfit', 'Noto Serif SC', serif;
 }
 
 body {
-    background-color: #12121e;
+    background-color: #2d0a0a;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -23,12 +23,10 @@ body {
     max-width: 500px;
     height: 100vh;
     max-height: 900px;
-    background: #1b5e20;
-    /* Deep Garden Green */
+    background: #5d3a1a;
     box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
     overflow: hidden;
-    border: 6px solid #333;
-    /* Darker stone border */
+    border: 8px solid #c91a1a;
 }
 
 #game-container::after {
@@ -38,7 +36,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.6);
     pointer-events: none;
     z-index: 5;
 }
@@ -72,30 +70,33 @@ canvas {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(45, 10, 10, 0.8);
     backdrop-filter: blur(10px);
     padding: 10px 15px;
-    border-radius: 15px;
-    border: 3px solid #fff;
-    color: white;
+    border-radius: 5px;
+    border: 2px solid #ffd966;
+    color: #ffd966;
     font-weight: 700;
     z-index: 20;
     pointer-events: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
 #progress-container {
     flex-grow: 1;
-    height: 10px;
-    background: rgba(255, 255, 255, 0.2);
+    height: 12px;
+    background: rgba(255, 217, 102, 0.2);
     margin: 0 15px;
-    border-radius: 5px;
+    border-radius: 2px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 217, 102, 0.3);
 }
 
 #progress-bar {
-    background: linear-gradient(90deg, #ffd700, #ff8800);
-    box-shadow: 0 0 10px #ffd700;
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #c91a1a, #ffd966);
+    box-shadow: 0 0 10px #c91a1a;
     transition: width 0.2s ease;
 }
 
@@ -105,15 +106,15 @@ canvas {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(10, 10, 20, 0.9);
-    backdrop-filter: blur(10px);
+    background: rgba(45, 10, 10, 0.95);
+    backdrop-filter: blur(15px);
     display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
     padding: 20px;
-    color: white;
+    color: #ffd966;
     z-index: 20;
 }
 
@@ -122,76 +123,65 @@ canvas {
 }
 
 h1 {
-    font-size: 3rem;
+    font-size: 3.5rem;
+    font-family: 'Noto Serif SC', serif;
     font-weight: 900;
     margin-bottom: 10px;
-    background: linear-gradient(90deg, #ffd700, #ffaa00);
+    background: linear-gradient(180deg, #ffd966, #ff8800);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0px 5px 15px rgba(255, 215, 0, 0.3);
+    text-shadow: 0px 5px 20px rgba(255, 150, 0, 0.4);
+    letter-spacing: 2px;
 }
 
 .victory-title {
-    background: linear-gradient(90deg, #ffcc00, #ff8800);
+    background: linear-gradient(180deg, #ffd966, #ffffff);
     -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0px 5px 15px rgba(255, 150, 0, 0.3);
 }
 
 #end-title {
-    background: linear-gradient(90deg, #ff3366, #cc0033);
+    background: linear-gradient(180deg, #ff4444, #8b0000);
     -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0px 5px 15px rgba(255, 50, 100, 0.3);
 }
 
 p {
     font-size: 1.2rem;
     margin-bottom: 30px;
-    color: #e0e0e0;
+    color: #e0b080;
+    font-style: italic;
 }
 
 button {
-    padding: 15px 45px;
+    padding: 15px 50px;
     font-size: 1.6rem;
+    font-family: 'Noto Serif SC', serif;
     font-weight: 900;
-    color: white;
-    background: linear-gradient(180deg, #ffd700 0%, #ff8800 100%);
-    border: 4px solid #333;
-    border-radius: 10px;
-    /* More regal, less rounded */
+    color: #2d0a0a;
+    background: linear-gradient(180deg, #ffd966 0%, #ffaa00 100%);
+    border: 2px solid #5d3a1a;
+    border-radius: 4px;
     cursor: pointer;
-    box-shadow: 0 8px 0px #774400, 0 15px 25px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 6px 0px #8b4513, 0 15px 25px rgba(0, 0, 0, 0.5);
     transition: transform 0.1s, box-shadow 0.1s;
     pointer-events: auto;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
 }
 
 button:active {
     transform: translateY(4px);
-    box-shadow: 0 4px 0px #774400, 0 5px 15px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 2px 0px #8b4513, 0 5px 15px rgba(0, 0, 0, 0.5);
 }
 
 #restart-btn {
-    background: linear-gradient(180deg, #ff3366 0%, #cc0033 100%);
-    box-shadow: 0 8px 0px #77001a, 0 15px 25px rgba(200, 0, 50, 0.4);
+    background: linear-gradient(180deg, #ff4444 0%, #c91a1a 100%);
+    color: white;
+    box-shadow: 0 6px 0px #600;
 }
 
 #restart-btn:active {
-    box-shadow: 0 4px 0px #77001a, 0 5px 15px rgba(200, 0, 50, 0.4);
-}
-
-#next-level-btn {
-    background: linear-gradient(180deg, #ffcc00 0%, #ff8800 100%);
-    box-shadow: 0 8px 0px #774400, 0 15px 25px rgba(255, 150, 0, 0.4);
-}
-
-#next-level-btn:active {
-    box-shadow: 0 4px 0px #774400, 0 5px 15px rgba(255, 150, 0, 0.4);
+    box-shadow: 0 2px 0px #600;
 }
 
 .floating-text {
@@ -202,14 +192,15 @@ button:active {
     animation: floatUp 1s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
     z-index: 15;
     text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+    font-family: 'Noto Serif SC', serif;
 }
 
 .positive {
-    color: #00f0ff;
+    color: #ffd966;
 }
 
 .negative {
-    color: #ff3366;
+    color: #ff4444;
 }
 
 @keyframes floatUp {
@@ -228,3 +219,5 @@ button:active {
         opacity: 0;
     }
 }
+
+/* Decorative Lantern effect elements can be added here if needed */

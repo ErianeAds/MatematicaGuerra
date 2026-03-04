@@ -28,20 +28,20 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// --- CONFIGURAÇÕES DO JOGO ---
+// --- CONFIGURAÇÕES DO JOGO (TEMA CHINÊS) ---
 const CONFIG = {
-    DIRECAO: 'CIMA',      // 'CIMA' para correr para cima, 'BAIXO' para correr para baixo
-    VELOCIDADE_BASE: 220,  // Velocidade de avanço automática reduzida
-    VELOCIDADE_INIMIGO: 50, // Velocidade com que os inimigos avançam contra o jogador
-    SENSIBILIDADE: 2.8,    // Velocidade de movimento lateral aumentada para desvios rápidos
-    DIFICULDADE: 1.0,      // Multiplicador de spawn de perigos
-    COR_PRIMARIA: '#ffd700', // Dourado Real para a horda e portões bons
-    COR_SECUNDARIA: '#4169e1', // Azul Royal para contraste
-    ESTILO: 'CASTELO'        // Estilo visual principal: Jardim de Castelo e Fortaleza
+    DIRECAO: 'CIMA',
+    VELOCIDADE_BASE: 220,
+    VELOCIDADE_INIMIGO: 50,
+    SENSIBILIDADE: 2.8,
+    DIFICULDADE: 1.0,
+    COR_PRIMARIA: '#c91a1a', // Vermelho Imperial Chinês
+    COR_SECUNDARIA: '#ffd966', // Amarelo Dourado
+    ESTILO: 'CHINES_CASTLE'
 };
 
 // Game State
-let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, VICTORY
+let gameState = 'MENU';
 let lastTime = 0;
 let level = 1;
 let coins = 0;
@@ -109,7 +109,6 @@ function spawnFloatingText(x, y, text, type = 'positive') {
     el.className = `floating-text ${type}`;
     el.innerText = text;
 
-    // Anime Impact Text scaling
     if (text.includes('x') || text.includes('!!')) {
         el.style.fontSize = '3.5rem';
         el.style.letterSpacing = '5px';
@@ -135,11 +134,11 @@ let horde = {
     targetX: canvas.width / 2,
     baseRadius: 2,
     displayCount: 10,
-    units: [], // Dynamic units array
+    units: [],
     auraPulse: 0,
-    vx: 0,         // Horizontal velocity
-    tilt: 0,       // Current rotation/bank
-    bounce: 1.0    // Growing/Bounce scale
+    vx: 0,
+    tilt: 0,
+    bounce: 1.0
 };
 
 class HordeUnit {
@@ -179,12 +178,10 @@ function updateHordeCount(newCount) {
     const diff = targetVisuals - horde.units.length;
 
     if (diff > 0) {
-        // Spawn new units
         for (let i = 0; i < diff; i++) {
             horde.units.push(new HordeUnit());
         }
     } else if (diff < 0) {
-        // Remove units (from the end for simplicity)
         for (let i = 0; i < Math.abs(diff); i++) {
             if (horde.units.length > 0) {
                 horde.units.pop();
@@ -239,11 +236,11 @@ let entities = [];
 class Gate {
     constructor(y, typeL, valL, typeR, valR, canMove = false) {
         this.y = y;
-        this.typeL = typeL; // '+', '-', '*', '/'
+        this.typeL = typeL;
         this.valL = valL;
         this.typeR = typeR;
         this.valR = valR;
-        this.height = 80;
+        this.height = 100;
         this.width = canvas.width;
         this.passed = false;
         this.canMove = canMove;
@@ -265,47 +262,63 @@ class Gate {
 
         let midX = canvas.width / 2 + this.xOffset;
 
-        // Stone Portals effect instead of simple rectangles
-        ctx.strokeStyle = '#555'; // Stone grey
-        ctx.lineWidth = 8;
+        // Estilo de portão chinês (Pagode)
+        ctx.save();
 
-        // Left Gate - Stone Arch
-        let colorL = (this.typeL === '+' || this.typeL === '*') ? '#4dff88' : '#ff4d4d';
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        // Left Gate - Pagode Vermelho
+        let colorL = (this.typeL === '+' || this.typeL === '*') ? '#c91a1a' : '#8b4513';
+
+        // Base do portão
+        ctx.fillStyle = '#5d3a1a';
         ctx.fillRect(0, drawY, midX, this.height);
 
-        ctx.fillStyle = colorL;
-        ctx.globalAlpha = 0.2;
-        ctx.fillRect(0, drawY, midX, this.height);
-        ctx.globalAlpha = 1.0;
+        // Telhado estilo chinês
+        ctx.fillStyle = '#c91a1a';
+        ctx.beginPath();
+        ctx.moveTo(0, drawY);
+        ctx.lineTo(midX / 2, drawY - 25);
+        ctx.lineTo(midX, drawY);
+        ctx.fill();
 
-        // Arch border
-        ctx.strokeStyle = colorL;
-        ctx.strokeRect(5, drawY, midX - 10, this.height);
+        // Decoração dourada
+        ctx.fillStyle = '#ffd966';
+        ctx.font = 'bold 20px "Noto Serif SC"';
+        ctx.fillText('战', midX / 4, drawY + this.height / 2);
 
-        // Right Gate - Stone Arch
-        let colorR = (this.typeR === '+' || this.typeR === '*') ? '#4dff88' : '#ff4d4d';
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        // Right Gate
+        ctx.fillStyle = '#5d3a1a';
         ctx.fillRect(midX, drawY, canvas.width - midX, this.height);
 
-        ctx.fillStyle = colorR;
-        ctx.globalAlpha = 0.2;
-        ctx.fillRect(midX, drawY, canvas.width - midX, this.height);
-        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = '#c91a1a';
+        ctx.beginPath();
+        ctx.moveTo(midX, drawY);
+        ctx.lineTo(midX + (canvas.width - midX) / 2, drawY - 25);
+        ctx.lineTo(canvas.width, drawY);
+        ctx.fill();
 
-        ctx.strokeStyle = colorR;
-        ctx.strokeRect(midX + 5, drawY, canvas.width - midX - 10, this.height);
+        ctx.fillStyle = '#ffd966';
+        ctx.fillText('争', midX + (canvas.width - midX) / 2, drawY + this.height / 2);
 
-        ctx.fillStyle = 'white';
+        // Lanternas
+        ctx.fillStyle = '#ff6b6b';
+        ctx.beginPath();
+        ctx.arc(midX / 2, drawY - 15, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffd966';
+        ctx.beginPath();
+        ctx.arc(midX + (canvas.width - midX) / 2, drawY - 15, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffd966';
         ctx.font = 'bold 24px Outfit';
         ctx.textAlign = 'center';
 
-        // Pulse effect for gate text
         let p = Math.sin(gameTime * 10) * 0.1 + 1.0;
         ctx.save();
         ctx.scale(p, p);
         ctx.fillText(`${this.typeL}${this.valL}`, (midX / 2) / p, (drawY + this.height / 2 + 8) / p);
         ctx.fillText(`${this.typeR}${this.valR}`, (midX + (canvas.width - midX) / 2) / p, (drawY + this.height / 2 + 8) / p);
+        ctx.restore();
         ctx.restore();
     }
 
@@ -331,15 +344,15 @@ class Gate {
                 if (type === '*') msg = `X${val}!!`;
                 spawnFloatingText(hx, hy, msg, 'positive');
                 playPopSound(600 + Math.random() * 200, 'square');
-                spawnParticles(hx, hy, '#00f0ff', 25);
+                spawnParticles(hx, hy, '#ffd966', 25);
                 applyShake(5);
-                horde.bounce = 1.3; // Springy grow effect
+                horde.bounce = 1.3;
             } else if (diff < 0) {
                 spawnFloatingText(hx, hy, `${diff}`, 'negative');
                 playPopSound(200, 'sawtooth');
-                spawnParticles(hx, hy, '#ff3366', 10);
+                spawnParticles(hx, hy, '#c91a1a', 10);
                 applyShake(10);
-                horde.bounce = 0.8; // Shrink impact effect
+                horde.bounce = 0.8;
             }
         }
     }
@@ -351,14 +364,14 @@ class EnemyUnit {
         this.relY = (Math.random() - 0.5) * 40;
         this.isLeader = isLeader;
         this.scale = 1.0;
-        this.speedBoost = (Math.random() > 0.7) ? Math.random() * 60 : 0; // Spearhead boost
+        this.speedBoost = (Math.random() > 0.7) ? Math.random() * 60 : 0;
         this.dead = false;
     }
 }
 
 class EnemyGroup {
     constructor(y, count, xOffset) {
-        this.y = y; // World Y coordinate
+        this.y = y;
         this.count = count;
         this.initialCount = count;
         this.x = xOffset;
@@ -366,17 +379,15 @@ class EnemyGroup {
         this.dispersing = false;
         this.units = [];
 
-        // Visual Hierarchy: Formation based on count
         let width = Math.min(canvas.width * 0.8, 40 + Math.sqrt(count) * 15);
         let depth = 40 + Math.sqrt(count) * 10;
 
         for (let i = 0; i < count; i++) {
-            let u = new EnemyUnit(i === 0); // First unit is leader
-            // Formation: Wall if high count, Column if low
-            if (count > 100) { // WALL
+            let u = new EnemyUnit(i === 0);
+            if (count > 100) {
                 u.relX = (Math.random() - 0.5) * width;
                 u.relY = (Math.random() - 0.5) * depth;
-            } else { // COLUMN
+            } else {
                 u.relX = (Math.random() - 0.5) * 40;
                 u.relY = (Math.random() - 0.5) * (count * 5);
             }
@@ -387,24 +398,20 @@ class EnemyGroup {
     update(dt) {
         if (this.units.length === 0) return;
 
-        // Swarm AI: Move towards player (Funneling) as they get closer
         let worldHordeY = (CONFIG.DIRECAO === 'CIMA' ? -distanceTravelled + horde.y : distanceTravelled + horde.y);
         let distY = Math.abs(this.y - worldHordeY);
 
         if (!this.dispersing && distY < 600) {
-            // Funneling: attraction increases as distance closes
             let attraction = (1 - (distY / 600)) * 2;
             this.x += (horde.x - this.x) * attraction * dt;
         }
 
-        // Basic advancement
         let move = CONFIG.VELOCIDADE_INIMIGO * dt;
         if (CONFIG.DIRECAO === 'CIMA') this.y += move;
         else this.y -= move;
 
         if (this.flashTimer > 0) this.flashTimer -= dt;
 
-        // Dispersal logic
         if (this.dispersing) {
             for (let u of this.units) {
                 u.relX += (u.relX > 0 ? 300 : -300) * dt;
@@ -427,28 +434,51 @@ class EnemyGroup {
             let ux = this.x + u.relX;
             let uy = drawY + u.relY + (CONFIG.DIRECAO === 'CIMA' ? u.speedBoost * 0.1 : -u.speedBoost * 0.1);
 
-            let size = u.isLeader ? 8 : 5;
-            ctx.fillStyle = u.isLeader ? '#990022' : '#ff3366';
+            let size = u.isLeader ? 10 : 7;
 
+            // Estilo de guerreiro mongol/chinês
+            ctx.fillStyle = u.isLeader ? '#c91a1a' : '#8b4513';
+
+            // Corpo
             ctx.beginPath();
             ctx.arc(ux, uy, size, 0, Math.PI * 2);
             ctx.fill();
 
+            // Capacete
+            ctx.fillStyle = '#5d3a1a';
+            ctx.beginPath();
+            ctx.ellipse(ux, uy - size / 2, size / 1.5, size / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Lança
+            ctx.strokeStyle = '#b87c4b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(ux + size, uy - size);
+            ctx.lineTo(ux + size + 15, uy - size - 15);
+            ctx.stroke();
+
             if (u.isLeader) {
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffd966';
+                ctx.lineWidth = 3;
                 ctx.stroke();
+
+                // Bandeira
+                ctx.fillStyle = '#c91a1a';
+                ctx.fillRect(ux + 20, uy - 40, 15, 25);
+                ctx.fillStyle = '#ffd966';
+                ctx.font = '12px "Noto Serif SC"';
+                ctx.fillText('将', ux + 22, uy - 25);
             }
         }
         ctx.restore();
 
-        // Badge
         if (!this.dispersing) {
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.beginPath();
-            ctx.rect(this.x - 20, drawY - 60, 40, 20); // Safe rect instead of roundRect
+            ctx.rect(this.x - 20, drawY - 60, 40, 20);
             ctx.fill();
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = '#ffd966';
             ctx.font = 'bold 14px Outfit';
             ctx.textAlign = 'center';
             ctx.fillText(this.units.length, this.x, drawY - 45);
@@ -464,25 +494,23 @@ class EnemyGroup {
         let dist = Math.sqrt(dx * dx + pdy * pdy);
         let playerRad = Math.min(70, 25 + Math.sqrt(horde.count) * 2.5);
 
-        if (dist < playerRad + 50) { // Close enough to start individual unit combat
-            let combatThisFrame = Math.ceil(150 * dt); // Units to kill per second
+        if (dist < playerRad + 50) {
+            let combatThisFrame = Math.ceil(150 * dt);
             let kills = 0;
 
             for (let i = 0; i < combatThisFrame; i++) {
                 if (this.units.length > 0 && horde.count > 0) {
                     let u = this.units.pop();
 
-                    // If leader dies, disperse the rest
                     if (u.isLeader && this.units.length > 0) {
                         this.dispersing = true;
-                        spawnFloatingText(this.x, drawY, "RETIRADA!", "negative");
+                        spawnFloatingText(this.x, drawY, "退却!", "negative");
                     }
 
                     updateHordeCount(horde.count - 1);
                     kills++;
 
-                    // Royal Particles
-                    spawnParticles(this.x + u.relX, drawY + u.relY, '#ff3366', 2);
+                    spawnParticles(this.x + u.relX, drawY + u.relY, '#8b4513', 2);
                     spawnParticles(hx, hy, CONFIG.COR_PRIMARIA, 2);
                 }
             }
@@ -494,7 +522,6 @@ class EnemyGroup {
                     this.flashTimer = 0.05;
                     applyShake(5);
                 }
-                // Visual Knockback (push player slightly back)
                 if (CONFIG.DIRECAO === 'CIMA') distanceTravelled -= 50 * dt;
                 else distanceTravelled += 50 * dt;
             }
@@ -506,9 +533,9 @@ class EnemyGroup {
 
 class Boss {
     constructor(y, count) {
-        this.y = y; // World Y coordinate
+        this.y = y;
         this.count = count;
-        this.height = 180;
+        this.height = 200;
     }
 
     draw(ctx, dy) {
@@ -516,28 +543,51 @@ class Boss {
         let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (drawY > canvas.height + 200 || drawY < -400) return;
 
-        // Castle Gate Structure
-        ctx.fillStyle = '#444'; // Dark Stone
+        ctx.save();
+
+        // Muralha da Cidade Proibida
+        ctx.fillStyle = '#8b4513';
         ctx.fillRect(0, drawY, canvas.width, this.height);
 
-        // Battlements (Torres)
-        ctx.fillStyle = '#333';
-        for (let i = 0; i < 10; i++) {
-            ctx.fillRect(i * (canvas.width / 10), drawY - 30, canvas.width / 20, 30);
+        // Ameias da muralha
+        ctx.fillStyle = '#b87c4b';
+        for (let i = 0; i < 12; i++) {
+            ctx.fillRect(i * (canvas.width / 12), drawY - 40, canvas.width / 24, 40);
         }
 
-        // Royal Banner
-        ctx.fillStyle = '#990022';
-        ctx.fillRect(canvas.width / 2 - 40, drawY + 20, 80, 100);
-        ctx.fillStyle = CONFIG.COR_PRIMARIA; // Gold Emblem
+        // Portão principal
+        ctx.fillStyle = '#c91a1a';
+        ctx.fillRect(canvas.width / 2 - 50, drawY + 20, 100, this.height - 20);
+
+        // Torres laterais
+        ctx.fillStyle = '#5d3a1a';
+        ctx.fillRect(20, drawY - 80, 60, 120);
+        ctx.fillRect(canvas.width - 80, drawY - 80, 60, 120);
+
+        // Bandeiras imperiais
+        ctx.fillStyle = '#c91a1a';
+        ctx.fillRect(canvas.width / 2 - 20, drawY - 100, 10, 60);
+        ctx.fillRect(canvas.width / 2 + 10, drawY - 100, 10, 60);
+        ctx.fillStyle = '#ffd966';
+        ctx.font = '30px "Noto Serif SC"';
+        ctx.fillText('皇', canvas.width / 2 - 15, drawY - 40);
+        ctx.fillText('帝', canvas.width / 2 + 15, drawY - 40);
+
+        // Dragão dourado
+        ctx.fillStyle = '#ffd966';
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, drawY + 60, 15, 0, Math.PI * 2);
+        ctx.arc(canvas.width / 2, drawY + this.height / 2, 30, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = '#c91a1a';
+        ctx.font = 'bold 20px "Noto Serif SC"';
+        ctx.fillText('龍', canvas.width / 2 - 10, drawY + this.height / 2 + 7);
 
         ctx.fillStyle = 'white';
         ctx.font = 'bold 30px Outfit';
         ctx.textAlign = 'center';
-        ctx.fillText(`FORTALEZA: ${Math.floor(this.count)}`, canvas.width / 2, drawY + this.height / 2 + 10);
+        ctx.fillText(`${Math.floor(this.count)}`, canvas.width / 2, drawY + this.height / 2 + 50);
+
+        ctx.restore();
     }
 
     checkCollision(hx, hy, dy, dt) {
@@ -554,7 +604,7 @@ class Boss {
             updateHordeCount(horde.count - drain);
 
             applyShake(5);
-            spawnParticles(canvas.width / 2, drawY + this.height, '#ffcc00', 5);
+            spawnParticles(canvas.width / 2, drawY + this.height, '#ffd966', 5);
             playPopSound(100, 'square');
 
             if (this.count <= 0) {
@@ -568,16 +618,15 @@ class Boss {
 
 class MudZone {
     constructor(y, length) {
-        this.y = y; // World Y coordinate
+        this.y = y;
         this.length = length;
     }
     draw(ctx, dy) {
         let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (drawY > canvas.height || drawY + this.length < 0) return;
-        ctx.fillStyle = 'rgba(101, 67, 33, 0.4)';
+        ctx.fillStyle = 'rgba(101, 67, 33, 0.6)';
         ctx.fillRect(0, drawY, canvas.width, this.length);
-        // Texture
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
         for (let i = 0; i < 10; i++) {
             ctx.beginPath();
             ctx.arc((i * 77) % canvas.width, drawY + (i * 33) % this.length, 20, 0, Math.PI * 2);
@@ -594,10 +643,9 @@ class MudZone {
 
 class Obstacle {
     constructor(y, x, type = 'wall') {
-        this.y = y; // World Y coordinate
+        this.y = y;
         this.x = x;
         this.type = type;
-        this.radius = 30;
         this.radius = 35;
         this.angle = 0;
     }
@@ -611,10 +659,9 @@ class Obstacle {
         ctx.translate(this.x, drawY);
         if (this.type === 'saw') {
             ctx.rotate(this.angle);
-            // Anime style saw - vibrant outline
-            ctx.strokeStyle = '#000';
+            ctx.strokeStyle = '#c91a1a';
             ctx.lineWidth = 5;
-            ctx.fillStyle = '#ff3366';
+            ctx.fillStyle = '#b87c4b';
             ctx.beginPath();
             for (let i = 0; i < 8; i++) {
                 let a = (i / 8) * Math.PI * 2;
@@ -623,20 +670,22 @@ class Obstacle {
             }
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            // Inner glow
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = '#ffd966';
             ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
         } else {
-            // Castle Wall Pillar
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#333';
-            ctx.fillStyle = '#666'; // Grey Stone
-            ctx.fillRect(-this.radius, -25, this.radius * 2, 50);
-            ctx.strokeRect(-this.radius, -25, this.radius * 2, 50);
-            // Stone details
-            ctx.fillStyle = '#555';
-            ctx.fillRect(-this.radius + 10, -15, 15, 10);
-            ctx.fillRect(this.radius - 25, 5, 15, 10);
+            // Estátua de guerreiro de terracota
+            ctx.fillStyle = '#b87c4b';
+            ctx.fillRect(-20, -40, 40, 80);
+            ctx.fillStyle = '#8b4513';
+            ctx.beginPath();
+            ctx.arc(0, -50, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-5, -60, 10, 5);
+            ctx.fillStyle = '#ffd966';
+            ctx.beginPath();
+            ctx.arc(0, -30, 5, 0, Math.PI * 2);
+            ctx.fill();
         }
         ctx.restore();
     }
@@ -650,7 +699,7 @@ class Obstacle {
             updateHordeCount(Math.max(0, Math.floor(horde.count * 0.95) - 1));
             applyShake(15);
             playPopSound(100, 'sawtooth');
-            spawnParticles(hx, hy, '#ff3366', 8);
+            spawnParticles(hx, hy, '#b87c4b', 8);
         }
     }
 }
@@ -658,6 +707,7 @@ class Obstacle {
 // Level Gen
 let bossLevelY = 0;
 let decorations = [];
+
 class Coin {
     constructor(y, x) {
         this.y = y;
@@ -674,8 +724,18 @@ class Coin {
         ctx.translate(this.x, drawY);
         ctx.rotate(this.rot);
         ctx.fillStyle = CONFIG.COR_SECUNDARIA;
-        ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Símbolo chinês para dinheiro
+        ctx.fillStyle = '#c91a1a';
+        ctx.font = 'bold 16px "Noto Serif SC"';
+        ctx.fillText('钱', -8, 6);
+
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
         ctx.restore();
     }
     checkCollision(hx, hy, dy) {
@@ -694,21 +754,19 @@ class Coin {
 
 function loadLevel(l) {
     level = l;
-    txtLevelIndicator.innerText = `Nível ${level}`;
+    txtLevelIndicator.innerText = `🏯 Nível ${level}`;
     entities = [];
     decorations = [];
     distanceTravelled = 0;
     currentSpeedMult = 1.0;
     gameSpeed = CONFIG.VELOCIDADE_BASE + (level * 10);
 
-    // reset horde
     horde.units = [];
     updateHordeCount(10);
     horde.displayCount = 10;
     horde.x = canvas.width / 2;
     horde.targetX = canvas.width / 2;
 
-    // Position player based on direction
     if (CONFIG.DIRECAO === 'CIMA') {
         horde.y = canvas.height * 0.85;
     } else {
@@ -719,14 +777,12 @@ function loadLevel(l) {
     let numSections = 5 + Math.floor(level / 2);
 
     for (let i = 0; i < numSections; i++) {
-        // Gates are ahead of the player
         if (CONFIG.DIRECAO === 'CIMA') {
             currentWorldY -= 600;
         } else {
             currentWorldY += 600;
         }
 
-        // Add Gate
         let typeL = '+'; let valL = Math.floor(Math.random() * 10) + level * 2;
         let typeR = '*'; let valR = 2;
         if (level > 2 && Math.random() > 0.5) { typeL = '-'; typeR = '+'; }
@@ -737,32 +793,29 @@ function loadLevel(l) {
 
         let offset = (CONFIG.DIRECAO === 'CIMA') ? 300 : -300;
 
-        // Add Obstacles or Enemies in between
         if (Math.random() > 0.5) {
             entities.push(new EnemyGroup(currentWorldY + offset, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
         } else if (level > 2) {
             entities.push(new Obstacle(currentWorldY + offset, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
         }
 
-        // Mud Zone
         if (level > 3 && Math.random() > 0.6) {
             entities.push(new MudZone(currentWorldY + (offset / 2), 300));
         }
 
-        // Add Coins
         if (Math.random() > 0.3) {
             entities.push(new Coin(currentWorldY + (offset * 0.7), 50 + Math.random() * (canvas.width - 100)));
         }
     }
 
-    // Decorate sides with Flowers and Royal Bushes
+    // Decorações de jardim chinês
     for (let d = 0; d < 40; d++) {
         decorations.push({
-            x: Math.random() > 0.5 ? 40 : canvas.width - 40,
+            x: Math.random() > 0.5 ? 20 : canvas.width - 20,
             y: (CONFIG.DIRECAO === 'CIMA' ? -d : d) * 300,
             size: 15 + Math.random() * 25,
-            color: Math.random() > 0.6 ? '#cc0033' : '#228B22', // Rose Red or Bush Green
-            type: Math.random() > 0.5 ? 'flower' : 'bush',
+            color: Math.random() > 0.6 ? '#c91a1a' : '#ffd966',
+            type: Math.random() > 0.5 ? 'lantern' : 'bamboo',
             layer: Math.random() > 0.8 ? 'foreground' : 'background'
         });
     }
@@ -776,7 +829,7 @@ function loadLevel(l) {
 function gameOver() {
     gameState = 'GAMEOVER';
     txtFinalLevel.innerText = level;
-    endMessage.innerText = "Sua horda foi dizimada.";
+    endMessage.innerText = "O Império foi derrotado...";
     endTitle.innerText = "Fim de Jogo!";
     uiGameOver.classList.add('active');
 }
@@ -790,7 +843,7 @@ function shootConfetti() {
             y: Math.random() * -canvas.height,
             vy: 2 + Math.random() * 5,
             vx: (Math.random() - 0.5) * 2,
-            color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+            color: `hsl(${Math.random() * 60 + 20}, 100%, 50%)`, // Tons de vermelho/dourado
             r: 4 + Math.random() * 4
         });
     }
@@ -806,10 +859,9 @@ function victory() {
     txtFinalLevel.innerText = level;
     shootConfetti();
 
-    // Celebration particles
     for (let i = 0; i < 5; i++) {
         setTimeout(() => {
-            spawnParticles(canvas.width / 2, canvas.height / 2, '#ffcc00', 50);
+            spawnParticles(canvas.width / 2, canvas.height / 2, '#ffd966', 50);
             playPopSound(800, 'sine');
         }, i * 200);
     }
@@ -833,54 +885,32 @@ function update(dt) {
         }
     }
 
-    // Update progress bar
     let totalD = Math.abs(bossLevelY);
     let progress = Math.min(100, Math.max(0, (distanceTravelled / totalD) * 100));
     uiProgressBar.style.width = `${progress}%`;
 
-    // Update units animation
     let radius = Math.min(65, 25 + Math.sqrt(horde.count) * 2.5);
     for (let unit of horde.units) {
         unit.update(dt, radius);
     }
 
-    // Shake decay
     if (shakeAmount > 0) shakeAmount -= dt * 20;
     else shakeAmount = 0;
 
-    // Physics-based movement (Momentum)
     let targetVX = (horde.targetX - horde.x) * 15;
     horde.vx += (targetVX - horde.vx) * 12 * dt;
     horde.x += horde.vx * dt;
 
-    // Banking (Tilt) calculation
     let targetTilt = (horde.vx * 0.0005);
     horde.tilt += (targetTilt - horde.tilt) * 10 * dt;
 
-    // Bounce decay
     horde.bounce += (1.0 - horde.bounce) * 8 * dt;
 
-    // Smooth display count (Juiciness for UI)
     horde.displayCount += (horde.count - horde.displayCount) * 5 * dt;
 
-    // EntCollisions and Updates
     for (let e of entities) {
         if (e.update) e.update(dt);
         e.checkCollision(horde.x, horde.y, distanceTravelled, dt);
-    }
-
-    // Win condition - reaching boss Y
-    // Since bossLevelY is < horde.y, we check if distanceTravelled + bossLevelY is near horde.y
-    if (CONFIG.DIRECAO === 'CIMA') {
-        if (distanceTravelled + bossLevelY > horde.y + 200 && gameState === 'PLAYING') {
-            // Fallback if boss not hit somehow
-            // victory();
-        }
-    } else { // BAJXO
-        if (distanceTravelled + bossLevelY < horde.y - 200 && gameState === 'PLAYING') {
-            // Fallback if boss not hit somehow
-            // victory();
-        }
     }
 }
 
@@ -889,7 +919,6 @@ function drawHorde() {
 
     let radius = Math.min(65, 25 + Math.sqrt(horde.count) * 2.5);
 
-    // Check for "Danger"
     let inDanger = false;
     for (let e of entities) {
         if (e instanceof EnemyGroup && Math.abs(e.y - (-distanceTravelled + horde.y)) < 400) {
@@ -897,7 +926,6 @@ function drawHorde() {
         }
     }
 
-    // Squash and Stretch Logic
     let velX = (horde.targetX - horde.x) * 0.01;
     let stretch = Math.min(0.3, Math.abs(velX));
     let sW = 1 + stretch;
@@ -905,13 +933,10 @@ function drawHorde() {
 
     ctx.save();
     ctx.translate(horde.x, horde.y);
-    ctx.rotate(horde.tilt); // Apply movement banking
-    ctx.scale(horde.bounce, horde.bounce); // Apply growth/shrink bounce
+    ctx.rotate(horde.tilt);
+    ctx.scale(horde.bounce, horde.bounce);
     ctx.scale(sW, sH);
 
-    // Motion Trail
-
-    // Dynamic Trail Particles (Air trails per unit when moving)
     if (Math.abs(horde.targetX - horde.x) > 50) {
         ctx.strokeStyle = 'rgba(255,255,255,0.2)';
         ctx.lineWidth = 1;
@@ -924,71 +949,70 @@ function drawHorde() {
         }
     }
 
-    // Simplified Horde Perimeter (No more "Gelatin")
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 4]);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.setLineDash([]); // Reset dash
+    ctx.setLineDash([]);
 
-    // Super Aura (Limit Break)
     if (horde.count > 100) {
         ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = CONFIG.COR_SECUNDARIA;
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = '#ffd966';
         ctx.beginPath();
         ctx.arc(0, 0, radius * (1.3 + Math.sin(horde.auraPulse * 1.5) * 0.1), 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
 
-    // Draw each dynamic unit
     for (let unit of horde.units) {
         ctx.save();
         let bobY = Math.sin(unit.bob) * 3;
         ctx.translate(unit.relX, unit.relY + bobY);
         ctx.scale(unit.scale, unit.scale);
 
-        // Individual unit shadow
+        // Sombra
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
         ctx.beginPath();
         ctx.ellipse(0, 8 - bobY, 6, 3, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Unit Body
-        ctx.fillStyle = '#e0ffff';
+        // Corpo do guerreiro imperial
+        ctx.fillStyle = '#b87c4b'; // Terracota
         ctx.beginPath();
         ctx.arc(0, 0, 6, 0, Math.PI * 2);
         ctx.fill();
 
-        // Leg/Foot (running effect)
-        ctx.fillStyle = '#fff';
-        let legX = Math.cos(unit.bob) * 3;
-        ctx.fillRect(legX - 2, 4, 3, 3);
-        ctx.fillRect(-legX - 1, 4, 3, 3);
+        // Armadura
+        ctx.strokeStyle = '#c91a1a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, -2, 4, 0, Math.PI);
+        ctx.stroke();
 
-        // Royal Soldier Helmet
-        ctx.fillStyle = '#ffd700'; // Gold
+        // Capacete
+        ctx.fillStyle = '#c91a1a';
         ctx.beginPath();
         ctx.arc(0, -5, 5, Math.PI, 0);
         ctx.fill();
-        ctx.fillStyle = '#990022'; // Red Plume
+
+        // Pena/Pluma
+        ctx.fillStyle = '#ffd966';
         ctx.fillRect(-1, -10, 2, 5);
 
-        // Anime Eyes (Reactive)
+        // Olhos
         ctx.fillStyle = '#000';
         let lookDir = (horde.targetX - horde.x) * 0.08;
         if (inDanger) {
-            // Angry/Focused eyes (slanted)
             ctx.beginPath();
             ctx.moveTo(-3 + lookDir, -2); ctx.lineTo(-1 + lookDir, 0);
             ctx.moveTo(1 + lookDir, 0); ctx.lineTo(3 + lookDir, -2);
             ctx.lineWidth = 2;
+            ctx.strokeStyle = '#fff';
             ctx.stroke();
         } else {
-            // Regular kawaii eyes
             ctx.fillRect(-3 + lookDir, -2, 2, 4);
             ctx.fillRect(1 + lookDir, -2, 2, 4);
         }
@@ -996,24 +1020,24 @@ function drawHorde() {
     }
     ctx.restore();
 
-    // Count Badge
-    ctx.fillStyle = '#000';
-    ctx.strokeStyle = CONFIG.COR_PRIMARIA;
+    // Badge do exército
+    ctx.fillStyle = '#2d0a0a';
+    ctx.strokeStyle = '#ffd966';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.rect(horde.x - 30, horde.y - radius - 55, 60, 28); // Safe rect
+    ctx.rect(horde.x - 35, horde.y - radius - 55, 70, 30);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = '#ffd966';
     ctx.font = '900 20px Outfit';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(Math.floor(horde.count), horde.x, horde.y - radius - 41);
+    ctx.fillText('军 ' + Math.floor(horde.count), horde.x, horde.y - radius - 40);
 }
 
 function drawSpeedlines() {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.1)';
     ctx.lineWidth = 2;
     let speed = (CONFIG.DIRECAO === 'CIMA') ? 1000 : -1000;
     for (let i = 0; i < 15; i++) {
@@ -1035,49 +1059,61 @@ function drawSpeedlines() {
 }
 
 function drawGrid(dy) {
-    // Castle Garden Grass
+    // Chão de terra da Muralha
     let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#2e7d32'); // Rich Garden Green
-    grad.addColorStop(1, '#1b5e20');
+    grad.addColorStop(0, '#8b5a2b');
+    grad.addColorStop(0.5, '#5d3a1a');
+    grad.addColorStop(1, '#3d2a0f');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Stone Path in the middle
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.fillRect(canvas.width / 2 - 50, 0, 100, canvas.height);
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    // Padrão de tijolos da Muralha
+    ctx.strokeStyle = '#b87c4b';
     ctx.lineWidth = 2;
-    ctx.strokeRect(canvas.width / 2 - 50, 0, 100, canvas.height);
-
-    // God Rays (Anime Sunlight)
-    ctx.fillStyle = 'rgba(255, 255, 200, 0.05)';
-    for (let i = 0; i < 3; i++) {
-        ctx.save();
-        ctx.translate(canvas.width / 2, -100);
-        ctx.rotate(0.2 + Math.sin(gameTime * 0.5 + i) * 0.1);
-        ctx.fillRect(-20, 0, 40, canvas.height * 1.5);
-        ctx.restore();
-    }
-
-    // Subtle leaf pattern instead of grid
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
     let dirSign = (CONFIG.DIRECAO === 'CIMA') ? 1 : -1;
-    for (let i = 0; i < 6; i++) {
-        for (let j = 0; j < 10; j++) {
-            let px = (i * 100);
-            let py = (j * 150 + (dy * dirSign % 150));
-            ctx.beginPath(); ctx.ellipse(px, py, 20, 10, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+    for (let y = 0; y < canvas.height; y += 40) {
+        let offset = (Math.floor((y + dy * dirSign) / 40) % 2) * 20;
+        for (let x = offset; x < canvas.width; x += 80) {
+            ctx.strokeRect(x, y, 60, 35);
+            if (Math.random() > 0.7) {
+                ctx.fillStyle = 'rgba(200, 100, 50, 0.15)';
+                ctx.font = '20px "Noto Serif SC"';
+                ctx.fillText('砖', x + 20, y + 25);
+            }
         }
     }
 
-    // Parallax Jungle Decorations (Leaves/Plants)
+    // Estrada central (caminho do dragão)
+    ctx.fillStyle = 'rgba(200, 50, 50, 0.1)';
+    ctx.fillRect(canvas.width / 2 - 40, 0, 80, canvas.height);
+
+    // Pegadas de dragão
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.1)';
+    for (let i = 0; i < 5; i++) {
+        let y = (i * 200 + dy * dirSign * 2) % canvas.height;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, y, 30, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Raios de sol orientais
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.03)';
+    for (let i = 0; i < 3; i++) {
+        ctx.save();
+        ctx.translate(canvas.width / 2, -100);
+        ctx.rotate(0.3 + Math.sin(gameTime * 0.5 + i) * 0.1);
+        ctx.fillRect(-30, 0, 60, canvas.height * 1.5);
+        ctx.restore();
+    }
+
+    // Decorações de bambu/árvores
     for (let dec of decorations) {
         if (dec.layer === 'foreground') continue;
-        drawLeaf(ctx, dec, dy * dirSign);
+        drawDecoration(ctx, dec, dy * dirSign);
     }
 }
 
-function drawLeaf(ctx, dec, dy) {
+function drawDecoration(ctx, dec, dy) {
     let drawY = dec.y + dy;
     if (CONFIG.DIRECAO === 'CIMA') {
         if (drawY > canvas.height + 200) dec.y -= 12000;
@@ -1087,25 +1123,29 @@ function drawLeaf(ctx, dec, dy) {
 
     if (drawY < -300 || drawY > canvas.height + 300) return;
 
-    if (dec.type === 'flower') {
-        // Draw a simple rose/flower
+    if (dec.type === 'lantern') {
+        // Lanterna chinesa
         ctx.fillStyle = dec.color;
         ctx.beginPath();
-        for (let i = 0; i < 5; i++) {
-            let a = (i / 5) * Math.PI * 2;
-            ctx.arc(dec.x + Math.cos(a) * 10, drawY + Math.sin(a) * 10, 8, 0, Math.PI * 2);
-        }
+        ctx.ellipse(dec.x, drawY, 15, 20, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#ffcc00';
-        ctx.beginPath(); ctx.arc(dec.x, drawY, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffd966';
+        ctx.beginPath();
+        ctx.arc(dec.x, drawY - 15, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.font = '16px "Noto Serif SC"';
+        ctx.fillText('福', dec.x - 8, drawY + 5);
     } else {
-        // Royal Bush
-        ctx.fillStyle = dec.color;
-        ctx.beginPath();
-        ctx.arc(dec.x, drawY, dec.size, 0, Math.PI * 2);
-        ctx.arc(dec.x - 10, drawY + 10, dec.size * 0.8, 0, Math.PI * 2);
-        ctx.arc(dec.x + 10, drawY + 10, dec.size * 0.8, 0, Math.PI * 2);
-        ctx.fill();
+        // Bambu
+        ctx.fillStyle = '#2d5a2d';
+        ctx.fillRect(dec.x - 5, drawY - 40, 10, 80);
+        ctx.fillStyle = '#3d7a3d';
+        for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            ctx.ellipse(dec.x, drawY - 40 + i * 20, 12, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 }
 
@@ -1113,7 +1153,7 @@ function drawForeground(dy) {
     let dirSign = (CONFIG.DIRECAO === 'CIMA') ? 1 : -1;
     for (let dec of decorations) {
         if (dec.layer !== 'foreground') continue;
-        drawLeaf(ctx, dec, dy * dirSign * 1.5); // Faster parallax for foreground
+        drawDecoration(ctx, dec, dy * dirSign * 1.5);
     }
 }
 
@@ -1121,12 +1161,10 @@ function draw(dt) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    // Camera shake and Dynamic Tilt
     let camX = (Math.random() - 0.5) * shakeAmount;
     let camY = (Math.random() - 0.5) * shakeAmount;
     ctx.translate(camX, camY);
 
-    // Subtle world tilt based on movement
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(-horde.tilt * 0.2);
     ctx.translate(-canvas.width / 2, -canvas.height / 2);
@@ -1134,7 +1172,6 @@ function draw(dt) {
     drawGrid(distanceTravelled);
     drawSpeedlines();
 
-    // Draw Entities
     for (let e of entities) {
         e.draw(ctx, distanceTravelled);
     }
@@ -1150,7 +1187,6 @@ function draw(dt) {
         }
     }
 
-    // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
         p.x += p.vx * dt;
@@ -1174,7 +1210,7 @@ function draw(dt) {
 function gameLoop(time) {
     if (!lastTime) lastTime = time;
     let dt = (time - lastTime) / 1000;
-    if (dt > 0.1) dt = 0.1; // Cap delta
+    if (dt > 0.1) dt = 0.1;
     lastTime = time;
 
     update(dt);
