@@ -1,10 +1,32 @@
 const canvas = document.getElementById('game-canvas'), ctx = canvas.getContext('2d'), ui = document.getElementById('ui-layer');
 const el = id => document.getElementById(id);
-const screens = { menu: el('main-menu'), over: el('game-over-screen'), victory: el('victory-screen') };
-const txt = { level: el('level-indicator'), coins: el('coin-count'), energy: el('energy-count'), arrows: el('arrow-count'), kills: el('final-kills'), finalLevel: el('final-level'), reward: el('level-coins') };
 
-function resize() { canvas.width = Math.min(window.innerWidth, 500); canvas.height = Math.min(window.innerHeight, 900); }
-window.addEventListener('resize', resize); resize();
+// Declarar variáveis globais necessárias
+let gateY = -1200;
+let bossLevelY = -3000;
+
+const screens = {
+    menu: el('main-menu'),
+    over: el('game-over-screen'),
+    victory: el('victory-screen')
+};
+
+const txt = {
+    level: el('level-indicator'),
+    coins: el('coin-count'),
+    energy: el('energy-count'),
+    arrows: el('arrow-count'),
+    kills: el('final-kills'),
+    finalLevel: el('final-level'),
+    reward: el('level-coins')
+};
+
+function resize() {
+    canvas.width = Math.min(window.innerWidth, 500);
+    canvas.height = Math.min(window.innerHeight, 900);
+}
+window.addEventListener('resize', resize);
+resize();
 
 const CFG = {
     speed: 250,
@@ -33,8 +55,23 @@ const playSnd = (f, t = 'sine', d = 0.1, v = 0.05) => {
     } catch (e) { }
 };
 
-const spawnP = (x, y, color, n, type) => { for (let i = 0; i < n; i++) { let a = Math.random() * Math.PI * 2, s = Math.random() * 200 + 50; particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, l: 1, color, s: Math.random() * 5 + 2, t: type }); } };
-const floating = (x, y, str, cls) => { const d = document.createElement('div'); d.className = `floating-text ${cls}`; d.innerText = str; const r = canvas.getBoundingClientRect(); d.style.left = `${x + r.left}px`; d.style.top = `${y + r.top}px`; ui.appendChild(d); setTimeout(() => d.remove(), 1000); };
+const spawnP = (x, y, color, n, type) => {
+    for (let i = 0; i < n; i++) {
+        let a = Math.random() * Math.PI * 2, s = Math.random() * 200 + 50;
+        particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, l: 1, color, s: Math.random() * 5 + 2, t: type });
+    }
+};
+
+const floating = (x, y, str, cls) => {
+    const d = document.createElement('div');
+    d.className = `floating-text ${cls}`;
+    d.innerText = str;
+    const r = canvas.getBoundingClientRect();
+    d.style.left = `${x + r.left}px`;
+    d.style.top = `${y + r.top}px`;
+    ui.appendChild(d);
+    setTimeout(() => d.remove(), 1000);
+};
 
 function updateHorde(n) {
     let old = h.count;
@@ -45,15 +82,27 @@ function updateHorde(n) {
     if (n > old) { combo++; comboT = 3; } else if (n < old) combo = 1;
 }
 
-const input = x => { if (state === 'PLAYING') { h.targetX = Math.max(40, Math.min(canvas.width - 40, x)); if (Math.abs(x - h.x) > 100 && h.dodge <= 0) h.dodge = 0.4; } };
+const input = x => {
+    if (state === 'PLAYING') {
+        h.targetX = Math.max(40, Math.min(canvas.width - 40, x));
+        if (Math.abs(x - h.x) > 100 && h.dodge <= 0) h.dodge = 0.4;
+    }
+};
+
 canvas.addEventListener('mousemove', e => input(e.clientX - canvas.getBoundingClientRect().left));
-canvas.addEventListener('touchmove', e => { e.preventDefault(); input(e.touches[0].clientX - canvas.getBoundingClientRect().left); }, { passive: false });
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    input(e.touches[0].clientX - canvas.getBoundingClientRect().left);
+}, { passive: false });
 
-const useSkill = (id, cost, cd, fn) => { if (energy < cost || h.cooldowns[id] > 0) return; energy -= cost; h.cooldowns[id] = cd; fn(); updateUI(); };
+const useSkill = (id, cost, cd, fn) => {
+    if (energy < cost || h.cooldowns[id] > 0) return;
+    energy -= cost; h.cooldowns[id] = cd; fn(); updateUI();
+};
 
-el('skill-arrow').onclick = () => useSkill('arrow', 5, 3, () => { arrows += 10; floating(h.x, h.y, '+10 🏹', 'positive'); playSnd(800); });
-el('skill-shield').onclick = () => useSkill('shield', 15, 12, () => { sShield = 5; let b = document.createElement('div'); b.className = 'effect-badge'; b.id = 'sb'; b.innerText = '🛡️ ESCUDO'; el('active-effects').appendChild(b); playSnd(400, 'square'); });
-el('skill-fire').onclick = () => useSkill('fire', 20, 15, () => {
+el('skill-arrow').addEventListener('click', () => useSkill('arrow', 5, 3, () => { arrows += 10; floating(h.x, h.y, '+10 🏹', 'positive'); playSnd(800); }));
+el('skill-shield').addEventListener('click', () => useSkill('shield', 15, 12, () => { sShield = 5; let b = document.createElement('div'); b.className = 'effect-badge'; b.id = 'sb'; b.innerText = '🛡️ ESCUDO'; el('active-effects').appendChild(b); playSnd(400, 'square'); }));
+el('skill-fire').addEventListener('click', () => useSkill('fire', 20, 15, () => {
     let k = 0;
     entities.forEach(e => {
         if (e.type === 'enemy' && e.y + dist > 0 && e.y + dist < canvas.height) {
@@ -67,27 +116,27 @@ el('skill-fire').onclick = () => useSkill('fire', 20, 15, () => {
     floating(250, 450, `🔥 ${k} ABATIDOS`, 'positive');
     playSnd(150, 'sawtooth', 0.5, 0.1);
     shake = 15;
-});
-el('skill-heal').onclick = () => useSkill('heal', 10, 8, () => {
+}));
+el('skill-heal').addEventListener('click', () => useSkill('heal', 10, 8, () => {
     let n = Math.floor(h.count * 0.3) + 5;
     updateHorde(h.count + n);
     floating(h.x, h.y, `+${n} 💊`, 'positive');
     spawnP(h.x, h.y, '#0ff88', 20);
     playSnd(1000);
-});
+}));
 
-document.querySelectorAll('.weapon').forEach(w => w.onclick = () => {
+document.querySelectorAll('.weapon').forEach(w => w.addEventListener('click', () => {
     h.weapon = w.dataset.weapon;
     document.querySelectorAll('.weapon').forEach(x => x.classList.remove('active'));
     w.classList.add('active');
     playSnd(500);
-});
+}));
 
 const drawMan = (x, y, headCol, bodyCol, plumeCol, size = 1) => {
     ctx.save(); ctx.translate(x, y); ctx.scale(size, size);
-    ctx.fillStyle = bodyCol; ctx.fillRect(-3, 0, 6, 8); // Corpo
-    ctx.fillStyle = headCol; ctx.beginPath(); ctx.arc(0, -2, 4, 0, 7); ctx.fill(); // Cabeça
-    if (plumeCol) { ctx.fillStyle = plumeCol; ctx.fillRect(-1, -7, 2, 4); } // Pluma
+    ctx.fillStyle = bodyCol; ctx.fillRect(-3, 0, 6, 8);
+    ctx.fillStyle = headCol; ctx.beginPath(); ctx.arc(0, -2, 4, 0, 7); ctx.fill();
+    if (plumeCol) { ctx.fillStyle = plumeCol; ctx.fillRect(-1, -7, 2, 4); }
     ctx.restore();
 }
 
@@ -106,12 +155,10 @@ class Entity {
     constructor(t, x, y, val) {
         this.type = t; this.x = x; this.y = y; this.v = val; this.dead = false; this.u = []; this.f = 0;
     }
-
     draw(dy) {
         let Y = this.y + dy;
         if (Y < -200 || Y > canvas.height + 200) return;
         ctx.save(); ctx.translate(this.x, Y);
-
         if (this.type === 'gate') {
             ctx.fillStyle = '#5d3a1a'; ctx.fillRect(-60, 0, 120, 80);
             ctx.fillStyle = '#8b4513'; ctx.fillRect(-40, 10, 20, 60); ctx.fillRect(20, 10, 20, 60);
@@ -138,7 +185,7 @@ class Entity {
 function loadLevel(l) {
     level = l; state = 'PLAYING'; entities = []; decors = []; dist = 0; gSpeed = CFG.speed + l * 15; updateHorde(15 + l * 2);
     h.firePower = 1;
-    let gateY = -1200;
+    gateY = -1200;
     entities.push(new Entity('gate', 250, gateY, ['+', 10 + l, '-', 2]));
     for (let i = 0; i < 3; i++) entities.push(new Entity('barrel', 100 + Math.random() * 300, gateY - 200 - i * 400, { dmg: 5 }));
     for (let i = 0; i < 5 + l * 2; i++) {
@@ -146,6 +193,7 @@ function loadLevel(l) {
         for (let j = 0; j < 8 + l * 3; j++) e.u.push({ x: (Math.random() - 0.5) * 50, y: (Math.random() - 0.5) * 50, l: j === 0 });
         entities.push(e);
     }
+    bossLevelY = gateY - 1600;
     entities.push(new Entity('boss', 250, gateY - 1600, 300 + l * 200));
     for (let i = 0; i < 5; i++) entities.push(new Entity('coin', 50 + Math.random() * 400, gateY - 400 - i * 300));
     for (let i = 0; i < 20; i++) {
@@ -164,14 +212,12 @@ function gameLoop(t) {
         for (let s in h.cooldowns) h.cooldowns[s] = Math.max(0, h.cooldowns[s] - dt);
         for (let w in h.wTimers) h.wTimers[w] = Math.max(0, h.wTimers[w] - dt);
         if (h.dodge > 0) h.dodge -= dt;
-
         h.vx += ((h.targetX - h.x) * 15 - h.vx) * dt * 10; h.x += h.vx * dt; h.tilt = h.vx * 0.0006; h.dCount += (h.count - h.dCount) * dt * 6;
         let rad = 30 + Math.sqrt(h.count) * 2; h.units.forEach(u => {
             u.b += dt * 12; u.s = Math.min(1, u.s + dt * 4);
             let d = Math.sqrt(u.rx * u.rx + u.ry * u.ry); if (d > rad || Math.random() > 0.98) { let a = Math.random() * Math.PI * 2, r = Math.random() * rad; u.tx = Math.cos(a) * r; u.ty = Math.sin(a) * r; }
             u.rx += (u.tx - u.rx) * 6 * dt; u.ry += (u.ty - u.ry) * 6 * dt;
         });
-
         projectiles = projectiles.filter(p => {
             p.p += (p.type === 'arrow' ? 12 : 5) * dt; let T = Math.min(1, p.p);
             p.x = p.sx + (p.tx - p.sx) * T; p.y = p.sy + (p.ty - p.sy) * T - Math.sin(T * Math.PI) * 50;
@@ -192,7 +238,6 @@ function gameLoop(t) {
                 } return false;
             } return true;
         });
-
         entities = entities.filter(e => !e.dead);
         entities.forEach(e => {
             let Y = e.y + dist;
@@ -212,7 +257,6 @@ function gameLoop(t) {
             if (e.type === 'coin' && Math.sqrt((h.x - e.x) ** 2 + (h.y - Y) ** 2) < 50) { coins++; energy = Math.min(100, energy + 5); playSnd(900); e.dead = true; }
             if (e.type === 'barrel' && Math.sqrt((h.x - e.x) ** 2 + (h.y - Y) ** 2) < 50) { h.firePower += 0.3; floating(h.x, h.y, '🔥 PODER +30%', 'positive'); spawnP(e.x, Y, '#ffaa00', 20, 'collect'); e.dead = true; playSnd(400); }
         });
-
         let target = entities.find(e => e.type === 'enemy' && Math.abs(e.y + dist - h.y) < CFG.weapons[h.weapon].r && e.u.length > 0);
         if (target && h.wTimers[h.weapon] <= 0) {
             if (h.weapon === 'bow' && arrows > 0) { projectiles.push({ sx: h.x, sy: h.y, x: h.x, y: h.y, tx: target.x, ty: target.y + dist, p: 0, type: 'arrow', dmg: 4 * h.firePower }); arrows--; h.wTimers.bow = 0.5; }
@@ -220,19 +264,15 @@ function gameLoop(t) {
         }
         updateUI(); if (shake > 0) shake -= dt * 40;
     }
-
     ctx.clearRect(0, 0, 500, 900); ctx.save(); ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     ctx.fillStyle = '#8b5a2b'; ctx.fillRect(0, 0, 500, 900); ctx.fillStyle = '#a8753a'; ctx.fillRect(150, 0, 200, 900);
     ctx.strokeStyle = '#6b4a1a'; ctx.lineWidth = 5; ctx.setLineDash([30, 50]); ctx.beginPath(); ctx.moveTo(180, 0); ctx.lineTo(180, 900); ctx.stroke(); ctx.beginPath(); ctx.moveTo(320, 0); ctx.lineTo(320, 900); ctx.stroke(); ctx.setLineDash([]);
-
     decors.forEach(d => {
         let dy = d.y + dist; if (dy > -100 && dy < 1000) {
             if (d.type === 'house') drawHouse(d.x, dy, d.side); else { d.s += 0.05; ctx.fillStyle = d.type === 'lantern' ? '#ffaa00' : '#2d5a2d'; ctx.beginPath(); ctx.arc(d.x + Math.sin(d.s) * 8, dy, 15, 0, 7); ctx.fill(); }
         }
     });
-
     entities.forEach(e => e.draw(dist)); projectiles.forEach(p => { ctx.fillStyle = p.type === 'arrow' ? '#ffd966' : '#000'; ctx.beginPath(); ctx.arc(p.x, p.y, p.type === 'arrow' ? 4 : 10, 0, 7); ctx.fill(); });
-
     if (state === 'PLAYING') {
         ctx.save(); ctx.translate(h.x, h.y); ctx.rotate(h.tilt);
         if (sShield > 0) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 60, 0, 7); ctx.stroke(); }
@@ -240,16 +280,43 @@ function gameLoop(t) {
         ctx.restore(); ctx.fillStyle = '#ffd966'; ctx.font = 'bold 24px Outfit'; ctx.textAlign = 'center'; ctx.fillText('⚔️ ' + Math.floor(h.dCount), h.x, h.y - 50);
         ctx.fillStyle = '#ffaa00'; ctx.font = 'bold 14px Outfit'; ctx.fillText('🔥 x' + h.firePower.toFixed(1), h.x, h.y - 80);
     }
-
     particles.forEach((p, i) => { p.x += p.vx * dt; p.y += p.vy * dt; p.l -= dt * 2; if (p.l <= 0) particles.splice(i, 1); else { ctx.globalAlpha = p.l; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill(); } });
     ctx.restore(); requestAnimationFrame(gameLoop);
 }
 
-function updateUI() { txt.level.innerText = `⚔️ NÍVEL ${level}`; txt.coins.innerText = coins; txt.energy.innerText = Math.floor(energy); txt.arrows.innerText = arrows; Object.keys(h.cooldowns).forEach(s => { let e = document.getElementById(`skill-${s}`); if (h.cooldowns[s] > 0) { e.classList.add('cooldown'); e.querySelector('.cooldown-overlay').innerText = Math.ceil(h.cooldowns[s]) + 's'; } else e.classList.remove('cooldown'); }); }
+function updateUI() {
+    txt.level.innerText = `⚔️ NÍVEL ${level}`;
+    txt.coins.innerText = coins;
+    txt.energy.innerText = Math.floor(energy);
+    txt.arrows.innerText = arrows;
+    Object.keys(h.cooldowns).forEach(s => {
+        let e = document.getElementById(`skill-${s}`);
+        if (h.cooldowns[s] > 0) {
+            e.classList.add('cooldown');
+            e.querySelector('.cooldown-overlay').innerText = Math.ceil(h.cooldowns[s]) + 's';
+        } else e.classList.remove('cooldown');
+    });
+}
+
 function fail() { state = 'MENU'; screens.over.classList.add('active'); txt.kills.innerText = totalKills; txt.finalLevel.innerText = level; }
 function win() { state = 'MENU'; screens.victory.classList.add('active'); let r = Math.floor(h.count * (1 + level * .2) * h.firePower); coins += r; txt.reward.innerText = r; }
 
-el('start-btn').onclick = () => { screens.menu.classList.remove('active'); loadLevel(1); };
-el('restart-btn').onclick = () => { screens.over.classList.remove('active'); loadLevel(level); };
-el('next-level-btn').onclick = () => { screens.victory.classList.remove('active'); loadLevel(level + 1); };
+// Adicionar event listeners com tratamento de erro
+el('start-btn').addEventListener('click', () => {
+    try {
+        screens.menu.classList.remove('active');
+        loadLevel(1);
+    } catch (err) { console.error(err); }
+});
+
+el('restart-btn').addEventListener('click', () => {
+    screens.over.classList.remove('active');
+    loadLevel(level);
+});
+
+el('next-level-btn').addEventListener('click', () => {
+    screens.victory.classList.remove('active');
+    loadLevel(level + 1);
+});
+
 requestAnimationFrame(gameLoop);

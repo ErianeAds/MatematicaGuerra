@@ -219,7 +219,7 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    z-index: 22;
+    z-index: 30;
     pointer-events: auto;
 }
 
@@ -313,6 +313,9 @@ button {
     box-shadow: 0 8px 0 #5d3a1a, 0 20px 40px rgba(0, 0, 0, 0.4);
     transition: all 0.1s;
     letter-spacing: 2px;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1000;
 }
 
 button:active {
