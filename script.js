@@ -35,9 +35,9 @@ const CONFIG = {
     VELOCIDADE_INIMIGO: 50, // Velocidade com que os inimigos avançam contra o jogador
     SENSIBILIDADE: 2.8,    // Velocidade de movimento lateral aumentada para desvios rápidos
     DIFICULDADE: 1.0,      // Multiplicador de spawn de perigos
-    COR_PRIMARIA: '#00f0ff', // Cor anime da horda e portões bons
-    COR_SECUNDARIA: '#ffcc00', // Dourado para moedas e super aura
-    ESTILO: 'SELVA'        // Estilo visual principal
+    COR_PRIMARIA: '#ffd700', // Dourado Real para a horda e portões bons
+    COR_SECUNDARIA: '#4169e1', // Azul Royal para contraste
+    ESTILO: 'CASTELO'        // Estilo visual principal: Jardim de Castelo e Fortaleza
 };
 
 // Game State
@@ -171,7 +171,12 @@ class HordeUnit {
 }
 
 function updateHordeCount(newCount) {
-    const diff = Math.floor(newCount) - horde.units.length;
+    horde.count = Math.floor(newCount);
+    if (horde.count < 0) horde.count = 0;
+
+    const VISUAL_LIMIT = 200;
+    const targetVisuals = Math.min(horde.count, VISUAL_LIMIT);
+    const diff = targetVisuals - horde.units.length;
 
     if (diff > 0) {
         // Spawn new units
@@ -186,7 +191,6 @@ function updateHordeCount(newCount) {
             }
         }
     }
-    horde.count = horde.units.length;
 }
 
 // Input
@@ -261,23 +265,36 @@ class Gate {
 
         let midX = canvas.width / 2 + this.xOffset;
 
-        ctx.globalAlpha = 0.5;
-        // Left Gate
-        let colorL = (this.typeL === '+' || this.typeL === '*') ? CONFIG.COR_PRIMARIA : '#ff3366';
-        ctx.fillStyle = colorL;
+        // Stone Portals effect instead of simple rectangles
+        ctx.strokeStyle = '#555'; // Stone grey
+        ctx.lineWidth = 8;
+
+        // Left Gate - Stone Arch
+        let colorL = (this.typeL === '+' || this.typeL === '*') ? '#4dff88' : '#ff4d4d';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(0, drawY, midX, this.height);
 
-        // Right Gate
-        let colorR = (this.typeR === '+' || this.typeR === '*') ? CONFIG.COR_PRIMARIA : '#ff3366';
+        ctx.fillStyle = colorL;
+        ctx.globalAlpha = 0.2;
+        ctx.fillRect(0, drawY, midX, this.height);
+        ctx.globalAlpha = 1.0;
+
+        // Arch border
+        ctx.strokeStyle = colorL;
+        ctx.strokeRect(5, drawY, midX - 10, this.height);
+
+        // Right Gate - Stone Arch
+        let colorR = (this.typeR === '+' || this.typeR === '*') ? '#4dff88' : '#ff4d4d';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(midX, drawY, canvas.width - midX, this.height);
+
         ctx.fillStyle = colorR;
+        ctx.globalAlpha = 0.2;
         ctx.fillRect(midX, drawY, canvas.width - midX, this.height);
         ctx.globalAlpha = 1.0;
 
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = colorL;
-        ctx.strokeRect(0, drawY, midX, this.height);
         ctx.strokeStyle = colorR;
-        ctx.strokeRect(midX, drawY, canvas.width - midX, this.height);
+        ctx.strokeRect(midX + 5, drawY, canvas.width - midX - 10, this.height);
 
         ctx.fillStyle = 'white';
         ctx.font = 'bold 24px Outfit';
@@ -452,21 +469,21 @@ class EnemyGroup {
             let kills = 0;
 
             for (let i = 0; i < combatThisFrame; i++) {
-                if (this.units.length > 0 && horde.units.length > 0) {
+                if (this.units.length > 0 && horde.count > 0) {
                     let u = this.units.pop();
 
                     // If leader dies, disperse the rest
                     if (u.isLeader && this.units.length > 0) {
                         this.dispersing = true;
-                        spawnFloatingText(this.x, drawY, "DEBANDADA!", "negative");
+                        spawnFloatingText(this.x, drawY, "RETIRADA!", "negative");
                     }
 
                     updateHordeCount(horde.count - 1);
                     kills++;
 
-                    // Particles for 1:1 annihilation
+                    // Royal Particles
                     spawnParticles(this.x + u.relX, drawY + u.relY, '#ff3366', 2);
-                    spawnParticles(hx, hy, '#00f0ff', 2);
+                    spawnParticles(hx, hy, CONFIG.COR_PRIMARIA, 2);
                 }
             }
 
@@ -491,16 +508,31 @@ class Boss {
     constructor(y, count) {
         this.y = y; // World Y coordinate
         this.count = count;
-        this.height = 150;
+        this.height = 180;
     }
 
     draw(ctx, dy) {
         if (this.count <= 0) return;
         let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
-        if (drawY > canvas.height + 200 || drawY < -300) return;
+        if (drawY > canvas.height + 200 || drawY < -400) return;
 
-        ctx.fillStyle = '#cc0033';
-        ctx.fillRect(50, drawY, canvas.width - 100, this.height);
+        // Castle Gate Structure
+        ctx.fillStyle = '#444'; // Dark Stone
+        ctx.fillRect(0, drawY, canvas.width, this.height);
+
+        // Battlements (Torres)
+        ctx.fillStyle = '#333';
+        for (let i = 0; i < 10; i++) {
+            ctx.fillRect(i * (canvas.width / 10), drawY - 30, canvas.width / 20, 30);
+        }
+
+        // Royal Banner
+        ctx.fillStyle = '#990022';
+        ctx.fillRect(canvas.width / 2 - 40, drawY + 20, 80, 100);
+        ctx.fillStyle = CONFIG.COR_PRIMARIA; // Gold Emblem
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, drawY + 60, 15, 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.fillStyle = 'white';
         ctx.font = 'bold 30px Outfit';
@@ -595,16 +627,16 @@ class Obstacle {
             ctx.fillStyle = '#fff';
             ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
         } else {
-            // Totem/Jungle Wall
+            // Castle Wall Pillar
             ctx.lineWidth = 4;
-            ctx.strokeStyle = '#000';
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(-this.radius, -15, this.radius * 2, 30);
-            ctx.strokeRect(-this.radius, -15, this.radius * 2, 30);
-            // Patterns
-            ctx.fillStyle = '#228B22';
-            ctx.fillRect(-this.radius + 5, -10, 10, 20);
-            ctx.fillRect(this.radius - 15, -10, 10, 20);
+            ctx.strokeStyle = '#333';
+            ctx.fillStyle = '#666'; // Grey Stone
+            ctx.fillRect(-this.radius, -25, this.radius * 2, 50);
+            ctx.strokeRect(-this.radius, -25, this.radius * 2, 50);
+            // Stone details
+            ctx.fillStyle = '#555';
+            ctx.fillRect(-this.radius + 10, -15, 15, 10);
+            ctx.fillRect(this.radius - 25, 5, 15, 10);
         }
         ctx.restore();
     }
@@ -723,13 +755,14 @@ function loadLevel(l) {
         }
     }
 
-    // Decorate sides
-    for (let d = 0; d < 30; d++) {
+    // Decorate sides with Flowers and Royal Bushes
+    for (let d = 0; d < 40; d++) {
         decorations.push({
             x: Math.random() > 0.5 ? 40 : canvas.width - 40,
-            y: (CONFIG.DIRECAO === 'CIMA' ? -d : d) * 400,
-            size: 20 + Math.random() * 30,
-            color: Math.random() > 0.5 ? '#228B22' : '#004d00',
+            y: (CONFIG.DIRECAO === 'CIMA' ? -d : d) * 300,
+            size: 15 + Math.random() * 25,
+            color: Math.random() > 0.6 ? '#cc0033' : '#228B22', // Rose Red or Bush Green
+            type: Math.random() > 0.5 ? 'flower' : 'bush',
             layer: Math.random() > 0.8 ? 'foreground' : 'background'
         });
     }
@@ -936,9 +969,13 @@ function drawHorde() {
         ctx.fillRect(legX - 2, 4, 3, 3);
         ctx.fillRect(-legX - 1, 4, 3, 3);
 
-        // Helmet / Headband (Legion look)
-        ctx.fillStyle = '#ff3366';
-        ctx.fillRect(-5, -6, 10, 3);
+        // Royal Soldier Helmet
+        ctx.fillStyle = '#ffd700'; // Gold
+        ctx.beginPath();
+        ctx.arc(0, -5, 5, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = '#990022'; // Red Plume
+        ctx.fillRect(-1, -10, 2, 5);
 
         // Anime Eyes (Reactive)
         ctx.fillStyle = '#000';
@@ -998,12 +1035,19 @@ function drawSpeedlines() {
 }
 
 function drawGrid(dy) {
-    // Jungle Background
+    // Castle Garden Grass
     let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#002b00');
-    grad.addColorStop(1, '#004d00');
+    grad.addColorStop(0, '#2e7d32'); // Rich Garden Green
+    grad.addColorStop(1, '#1b5e20');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Stone Path in the middle
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(canvas.width / 2 - 50, 0, 100, canvas.height);
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(canvas.width / 2 - 50, 0, 100, canvas.height);
 
     // God Rays (Anime Sunlight)
     ctx.fillStyle = 'rgba(255, 255, 200, 0.05)';
@@ -1035,23 +1079,34 @@ function drawGrid(dy) {
 
 function drawLeaf(ctx, dec, dy) {
     let drawY = dec.y + dy;
-    // Basic Looping for decorations
     if (CONFIG.DIRECAO === 'CIMA') {
-        if (drawY > canvas.height + 200) dec.y -= 10000;
+        if (drawY > canvas.height + 200) dec.y -= 12000;
     } else {
-        if (drawY < -200) dec.y += 10000;
+        if (drawY < -200) dec.y += 12000;
     }
 
     if (drawY < -300 || drawY > canvas.height + 300) return;
 
-    ctx.fillStyle = dec.color;
-    ctx.beginPath();
-    ctx.moveTo(dec.x, drawY);
-    ctx.bezierCurveTo(dec.x + dec.size, drawY - dec.size, dec.x + dec.size, drawY + dec.size, dec.x, drawY + dec.size);
-    ctx.bezierCurveTo(dec.x - dec.size, drawY + dec.size, dec.x - dec.size, drawY - dec.size, dec.x, drawY);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-    ctx.stroke();
+    if (dec.type === 'flower') {
+        // Draw a simple rose/flower
+        ctx.fillStyle = dec.color;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            let a = (i / 5) * Math.PI * 2;
+            ctx.arc(dec.x + Math.cos(a) * 10, drawY + Math.sin(a) * 10, 8, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.fillStyle = '#ffcc00';
+        ctx.beginPath(); ctx.arc(dec.x, drawY, 5, 0, Math.PI * 2); ctx.fill();
+    } else {
+        // Royal Bush
+        ctx.fillStyle = dec.color;
+        ctx.beginPath();
+        ctx.arc(dec.x, drawY, dec.size, 0, Math.PI * 2);
+        ctx.arc(dec.x - 10, drawY + 10, dec.size * 0.8, 0, Math.PI * 2);
+        ctx.arc(dec.x + 10, drawY + 10, dec.size * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+    }
 }
 
 function drawForeground(dy) {
