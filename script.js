@@ -123,40 +123,37 @@ let horde = {
 
 // Input
 let isDragging = false;
-let startX = 0;
-let hordeStartX = 0;
+let lastMouseX = 0;
+
+function handleInteractionStart(x) {
+    if (gameState !== 'PLAYING') return;
+    isDragging = true;
+    lastMouseX = x;
+}
+
+function handleInteractionMove(x) {
+    if (!isDragging || gameState !== 'PLAYING') return;
+    let dx = x - lastMouseX;
+    horde.targetX += dx * 1.5; // Sensitivity boost
+    horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
+    lastMouseX = x;
+}
+
+function handleInteractionEnd() {
+    isDragging = false;
+}
+
+canvas.addEventListener('mousedown', (e) => handleInteractionStart(e.clientX));
+window.addEventListener('mousemove', (e) => handleInteractionMove(e.clientX));
+window.addEventListener('mouseup', handleInteractionEnd);
 
 canvas.addEventListener('touchstart', (e) => {
-    if (gameState !== 'PLAYING') return;
-    isDragging = true;
-    startX = e.touches[0].clientX;
-    hordeStartX = horde.targetX;
+    handleInteractionStart(e.touches[0].clientX);
 }, { passive: false });
-
-canvas.addEventListener('touchmove', (e) => {
-    if (!isDragging || gameState !== 'PLAYING') return;
-    let dx = e.touches[0].clientX - startX;
-    horde.targetX = hordeStartX + dx;
-    horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
+window.addEventListener('touchmove', (e) => {
+    handleInteractionMove(e.touches[0].clientX);
 }, { passive: false });
-
-canvas.addEventListener('touchend', () => isDragging = false);
-
-canvas.addEventListener('mousedown', (e) => {
-    if (gameState !== 'PLAYING') return;
-    isDragging = true;
-    startX = e.clientX;
-    hordeStartX = horde.targetX;
-});
-
-canvas.addEventListener('mousemove', (e) => {
-    if (!isDragging || gameState !== 'PLAYING') return;
-    let dx = e.clientX - startX;
-    horde.targetX = hordeStartX + dx;
-    horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
-});
-
-canvas.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('touchend', handleInteractionEnd);
 
 // World Objects
 let entities = [];
@@ -378,33 +375,45 @@ class Obstacle {
         this.x = x;
         this.type = type;
         this.radius = 30;
+        this.radius = 35;
         this.angle = 0;
     }
     update(dt) {
-        if (this.type === 'saw') this.angle += 10 * dt;
+        if (this.type === 'saw') this.angle += 12 * dt;
     }
     draw(ctx, dy) {
         let drawY = this.y + dy;
-        if (drawY > canvas.height + 50 || drawY < -50) return;
+        if (drawY > canvas.height + 100 || drawY < -100) return;
         ctx.save();
         ctx.translate(this.x, drawY);
         if (this.type === 'saw') {
             ctx.rotate(this.angle);
-            ctx.fillStyle = '#666';
+            // Anime style saw - vibrant outline
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 5;
+            ctx.fillStyle = '#ff3366';
             ctx.beginPath();
             for (let i = 0; i < 8; i++) {
                 let a = (i / 8) * Math.PI * 2;
-                ctx.lineTo(Math.cos(a) * 40, Math.sin(a) * 40);
+                ctx.lineTo(Math.cos(a) * 45, Math.sin(a) * 45);
                 ctx.lineTo(Math.cos(a + 0.2) * 30, Math.sin(a + 0.2) * 30);
             }
-            ctx.fill();
-            ctx.fillStyle = '#999';
-            ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fill();
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            // Inner glow
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
         } else {
-            ctx.fillStyle = '#444';
-            ctx.fillRect(-this.radius, -10, this.radius * 2, 20);
-            ctx.strokeStyle = '#ff3366';
-            ctx.strokeRect(-this.radius, -10, this.radius * 2, 20);
+            // Totem/Jungle Wall
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#000';
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-this.radius, -15, this.radius * 2, 30);
+            ctx.strokeRect(-this.radius, -15, this.radius * 2, 30);
+            // Patterns
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(-this.radius + 5, -10, 10, 20);
+            ctx.fillRect(this.radius - 15, -10, 10, 20);
         }
         ctx.restore();
     }
@@ -415,10 +424,10 @@ class Obstacle {
         let dist = Math.sqrt(dx * dx + pdy * pdy);
         let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
         if (dist < this.radius + playerRad) {
-            horde.count = Math.max(1, horde.count - 1);
-            applyShake(10);
+            horde.count = Math.max(1, Math.floor(horde.count * 0.95) - 1);
+            applyShake(15);
             playPopSound(100, 'sawtooth');
-            spawnParticles(hx, hy, '#ff3366', 5);
+            spawnParticles(hx, hy, '#ff3366', 8);
         }
     }
 }
@@ -452,7 +461,7 @@ function loadLevel(l) {
         let typeR = '*'; let valR = 2;
         if (level > 2 && Math.random() > 0.5) { typeL = '-'; typeR = '+'; }
         if (level > 5 && Math.random() > 0.3) { typeL = '/'; typeR = '*'; }
-        if (Math.random() > 0.5) [typeL, valL, typeR, valR] = [typeR, valR, typeL, valL];
+        if (Math.random() > 0.5) [typeL, valL, typeR, valR] = [typeR, valL, typeL, valR];
 
         entities.push(new Gate(currentY, typeL, valL, typeR, valR, level > 5 && Math.random() > 0.4));
 
@@ -544,66 +553,85 @@ function update(dt) {
 function drawHorde() {
     if (horde.displayCount <= 0.5) return;
 
-    // Draw a big circle representing the group
-    let radius = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
+    let radius = Math.min(65, 25 + Math.sqrt(horde.displayCount) * 2.5);
 
-    // Glow
-    ctx.shadowBlur = 15;
+    // Anime Glow / Aura
+    ctx.shadowBlur = 25;
     ctx.shadowColor = '#00f0ff';
-    ctx.fillStyle = '#005aff';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.fillStyle = '#00bfff';
     ctx.beginPath();
     ctx.arc(horde.x, horde.y, radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Details (dots inside)
-    ctx.fillStyle = '#00f0ff';
-    let maxDots = Math.min(50, Math.floor(horde.displayCount));
+    // Units inside as "Anime characters" (simple blobs with eyes)
+    let maxDots = Math.min(40, Math.floor(horde.displayCount));
     for (let i = 0; i < maxDots; i++) {
-        let angle = i * 2.4; // golden ratio spiral
-        let rad = Math.sqrt(i) * (radius / Math.sqrt(maxDots)) * 0.8;
+        let angle = i * 2.4;
+        let rad = Math.sqrt(i) * (radius / Math.sqrt(maxDots)) * 0.85;
         let dx = Math.cos(angle) * rad;
         let dy = Math.sin(angle) * rad;
+
+        ctx.fillStyle = '#e0ffff';
         ctx.beginPath();
-        ctx.arc(horde.x + dx, horde.y + dy, 2, 0, Math.PI * 2);
+        ctx.arc(horde.x + dx, horde.y + dy, 4, 0, Math.PI * 2);
         ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#000';
+        ctx.fillRect(horde.x + dx - 2, horde.y + dy - 1, 1, 2);
+        ctx.fillRect(horde.x + dx + 1, horde.y + dy - 1, 1, 2);
     }
 
-    // Number text
+    // Count Badge (Stylized)
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.roundRect(horde.x - 25, horde.y - radius - 35, 50, 25, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+
     ctx.fillStyle = 'white';
-    ctx.font = 'bold 24px Outfit';
+    ctx.font = 'bold 20px Outfit';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(Math.floor(horde.displayCount), horde.x, horde.y - radius - 15);
+    ctx.fillText(Math.floor(horde.displayCount), horde.x, horde.y - radius - 22);
 }
 
 function drawGrid(dy) {
-    // Scrolling background gradient
+    // Jungle Background
     let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#1a1a2e');
-    grad.addColorStop(1, '#16213e');
+    grad.addColorStop(0, '#004d00'); // Deep jungle green
+    grad.addColorStop(1, '#228B22'); // Forest green
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    let gridS = 50;
-    let offset = dy % gridS;
-    for (let y = offset; y < canvas.height; y += gridS) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    }
-    for (let x = 0; x < canvas.width; x += gridS) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    // Subtle leaf pattern instead of grid
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+    for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 8; j++) {
+            let px = (i * 100 + (dy * 0.2) % 100);
+            let py = (j * 150 + (dy * 0.5) % 150);
+            ctx.beginPath(); ctx.ellipse(px, py, 20, 10, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+        }
     }
 
-    // Draw decorations (Parallax effect)
+    // Parallax Jungle Decorations (Leaves/Plants)
     for (let dec of decorations) {
-        let drawY = (dec.y + dy) % (decorations.length * 500);
-        if (drawY < -500) drawY += decorations.length * 500;
+        let drawY = (dec.y + dy) % (decorations.length * 400);
+        if (drawY < -500) drawY += decorations.length * 400;
+
         ctx.fillStyle = dec.color;
+        // Draw anime style leaf
         ctx.beginPath();
-        ctx.arc(dec.x, drawY, dec.size / 4, 0, Math.PI * 2);
+        ctx.moveTo(dec.x, drawY);
+        ctx.bezierCurveTo(dec.x + dec.size, drawY - dec.size, dec.x + dec.size, drawY + dec.size, dec.x, drawY + dec.size);
+        ctx.bezierCurveTo(dec.x - dec.size, drawY + dec.size, dec.x - dec.size, drawY - dec.size, dec.x, drawY);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.stroke();
     }
 }
 
