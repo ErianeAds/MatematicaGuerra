@@ -133,8 +133,57 @@ let horde = {
     count: 10,
     targetX: canvas.width / 2,
     baseRadius: 2,
-    displayCount: 10
+    displayCount: 10,
+    units: [] // Dynamic units array
 };
+
+class HordeUnit {
+    constructor() {
+        this.relX = (Math.random() - 0.5) * 20;
+        this.relY = (Math.random() - 0.5) * 20;
+        this.targetRelX = this.relX;
+        this.targetRelY = this.relY;
+        this.scale = 0; // Starts small for "pop-in" effect
+        this.rotation = Math.random() * Math.PI * 2;
+    }
+
+    update(dt, radius) {
+        // Animate scale up
+        if (this.scale < 1) this.scale += dt * 4;
+        if (this.scale > 1) this.scale = 1;
+
+        // Swarm behavior: move towards a random spot within the horde radius
+        let dist = Math.sqrt(this.relX * this.relX + this.relY * this.relY);
+        if (dist > radius || Math.random() > 0.98) {
+            let angle = Math.random() * Math.PI * 2;
+            let range = Math.random() * radius;
+            this.targetRelX = Math.cos(angle) * range;
+            this.targetRelY = Math.sin(angle) * range;
+        }
+
+        this.relX += (this.targetRelX - this.relX) * 5 * dt;
+        this.relY += (this.targetRelY - this.relY) * 5 * dt;
+    }
+}
+
+function updateHordeCount(newCount) {
+    const diff = Math.floor(newCount) - horde.units.length;
+
+    if (diff > 0) {
+        // Spawn new units
+        for (let i = 0; i < diff; i++) {
+            horde.units.push(new HordeUnit());
+        }
+    } else if (diff < 0) {
+        // Remove units (from the end for simplicity)
+        for (let i = 0; i < Math.abs(diff); i++) {
+            if (horde.units.length > 1) {
+                horde.units.pop();
+            }
+        }
+    }
+    horde.count = horde.units.length;
+}
 
 // Input
 let isDragging = false;
@@ -238,10 +287,10 @@ class Gate {
             let val = onLeft ? this.valL : this.valR;
 
             let oldAmt = horde.count;
-            if (type === '+') horde.count += val;
-            if (type === '-') horde.count = Math.max(1, horde.count - val);
-            if (type === '*') horde.count *= val;
-            if (type === '/') horde.count = Math.max(1, Math.floor(horde.count / val));
+            if (type === '+') updateHordeCount(horde.count + val);
+            if (type === '-') updateHordeCount(Math.max(1, horde.count - val));
+            if (type === '*') updateHordeCount(horde.count * val);
+            if (type === '/') updateHordeCount(Math.max(1, Math.floor(horde.count / val)));
 
             let diff = horde.count - oldAmt;
             if (diff > 0) {
@@ -254,6 +303,7 @@ class Gate {
             } else if (diff < 0) {
                 spawnFloatingText(hx, hy, `${diff}`, 'negative');
                 playPopSound(200, 'sawtooth');
+                spawnParticles(hx, hy, '#ff3366', 10);
                 applyShake(10);
             }
         }
@@ -311,8 +361,7 @@ class EnemyGroup {
             drain = Math.min(horde.count, drain);
 
             this.count -= drain;
-            horde.count -= drain;
-            horde.displayCount = horde.count; // Snap for combat
+            updateHordeCount(horde.count - drain);
             spawnParticles(hx + (Math.random() - 0.5) * 20, hy - 20, '#ff3366', 2);
             playPopSound(150 + Math.random() * 50, 'sawtooth');
 
@@ -355,8 +404,7 @@ class Boss {
             drain = Math.min(horde.count, drain);
 
             this.count -= drain;
-            horde.count -= drain;
-            horde.displayCount = horde.count;
+            updateHordeCount(horde.count - drain);
 
             applyShake(5);
             spawnParticles(canvas.width / 2, drawY + this.height, '#ffcc00', 5);
@@ -452,7 +500,7 @@ class Obstacle {
         let dist = Math.sqrt(dx * dx + pdy * pdy);
         let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
         if (dist < this.radius + playerRad) {
-            horde.count = Math.max(1, Math.floor(horde.count * 0.95) - 1);
+            updateHordeCount(Math.max(0, Math.floor(horde.count * 0.95) - 1));
             applyShake(15);
             playPopSound(100, 'sawtooth');
             spawnParticles(hx, hy, '#ff3366', 8);
@@ -473,7 +521,8 @@ function loadLevel(l) {
     gameSpeed = CONFIG.VELOCIDADE_BASE + (level * 10);
 
     // reset horde
-    horde.count = 10;
+    horde.units = [];
+    updateHordeCount(10);
     horde.displayCount = 10;
     horde.x = canvas.width / 2;
     horde.targetX = canvas.width / 2;
@@ -575,6 +624,12 @@ function update(dt) {
     let progress = Math.min(100, Math.max(0, (distanceTravelled / totalD) * 100));
     uiProgressBar.style.width = `${progress}%`;
 
+    // Update units animation
+    let radius = Math.min(65, 25 + Math.sqrt(horde.count) * 2.5);
+    for (let unit of horde.units) {
+        unit.update(dt, radius);
+    }
+
     // Shake decay
     if (shakeAmount > 0) shakeAmount -= dt * 20;
     else shakeAmount = 0;
@@ -607,9 +662,9 @@ function update(dt) {
 }
 
 function drawHorde() {
-    if (horde.displayCount <= 0.5) return;
+    if (horde.units.length === 0) return;
 
-    let radius = Math.min(65, 25 + Math.sqrt(horde.displayCount) * 2.5);
+    let radius = Math.min(65, 25 + Math.sqrt(horde.count) * 2.5);
 
     // Squash and Stretch Logic
     let velX = (horde.targetX - horde.x) * 0.01;
@@ -644,24 +699,23 @@ function drawHorde() {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Units inside
-    let maxDots = Math.min(30, Math.floor(horde.displayCount));
-    let wobble = Math.sin(gameTime * 10) * 2;
-    for (let i = 0; i < maxDots; i++) {
-        let angle = i * 2.4 + gameTime;
-        let rad = Math.sqrt(i) * (radius / Math.sqrt(maxDots)) * 0.8;
-        let dx = Math.cos(angle) * rad;
-        let dy = Math.sin(angle) * rad + wobble;
+    // Draw each dynamic unit
+    for (let unit of horde.units) {
+        ctx.save();
+        ctx.translate(unit.relX, unit.relY);
+        ctx.scale(unit.scale, unit.scale); // Pop-in effect
 
         ctx.fillStyle = '#e0ffff';
         ctx.beginPath();
-        ctx.arc(dx, dy, 5, 0, Math.PI * 2);
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
         ctx.fill();
-        // Eyes
+
+        // Anime Eyes
         ctx.fillStyle = '#000';
         let lookDir = (horde.targetX - horde.x) * 0.1;
-        ctx.fillRect(dx - 2 + lookDir, dy - 2, 2, 4);
-        ctx.fillRect(dx + 1 + lookDir, dy - 2, 2, 4);
+        ctx.fillRect(-2 + lookDir, -2, 2, 4);
+        ctx.fillRect(1 + lookDir, -2, 2, 4);
+        ctx.restore();
     }
     ctx.restore();
 
@@ -678,7 +732,7 @@ function drawHorde() {
     ctx.font = '900 20px Outfit';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(Math.floor(horde.displayCount), horde.x, horde.y - radius - 41);
+    ctx.fillText(Math.floor(horde.count), horde.x, horde.y - radius - 41);
 }
 
 function drawSpeedlines() {
