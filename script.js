@@ -181,7 +181,7 @@ function updateHordeCount(newCount) {
     } else if (diff < 0) {
         // Remove units (from the end for simplicity)
         for (let i = 0; i < Math.abs(diff); i++) {
-            if (horde.units.length > 1) {
+            if (horde.units.length > 0) {
                 horde.units.pop();
             }
         }
@@ -402,7 +402,7 @@ class EnemyGroup {
         if (drawY > canvas.height + 400 || drawY < -400) return;
 
         ctx.save();
-        if (this.flashTimer > 0) {
+        if (this.flashTimer > 0 && ctx.filter) {
             ctx.filter = 'brightness(200%)';
         }
 
@@ -429,7 +429,7 @@ class EnemyGroup {
         if (!this.dispersing) {
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.beginPath();
-            ctx.roundRect(this.x - 20, drawY - 60, 40, 20, 5);
+            ctx.rect(this.x - 20, drawY - 60, 40, 20); // Safe rect instead of roundRect
             ctx.fill();
             ctx.fillStyle = 'white';
             ctx.font = 'bold 14px Outfit';
@@ -771,7 +771,6 @@ function victory() {
     txtLevelCoins.innerText = reward;
     uiVictory.classList.add('active');
     txtFinalLevel.innerText = level;
-    txtLevelCoins.innerText = coins;
     shootConfetti();
 
     // Celebration particles
@@ -965,7 +964,7 @@ function drawHorde() {
     ctx.strokeStyle = CONFIG.COR_PRIMARIA;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.roundRect(horde.x - 30, horde.y - radius - 55, 60, 28, 8);
+    ctx.rect(horde.x - 30, horde.y - radius - 55, 60, 28); // Safe rect
     ctx.fill();
     ctx.stroke();
 
