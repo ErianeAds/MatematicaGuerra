@@ -31,8 +31,8 @@ resize();
 // --- CONFIGURAÇÕES DO JOGO ---
 const CONFIG = {
     DIRECAO: 'CIMA',      // 'CIMA' para correr para cima, 'BAIXO' para correr para baixo
-    VELOCIDADE_BASE: 300,  // Velocidade de avanço automática
-    SENSIBILIDADE: 1.8,    // Velocidade de movimento lateral
+    VELOCIDADE_BASE: 220,  // Velocidade de avanço automática reduzida
+    SENSIBILIDADE: 2.8,    // Velocidade de movimento lateral aumentada para desvios rápidos
     DIFICULDADE: 1.0,      // Multiplicador de spawn de perigos
     COR_PRIMARIA: '#00f0ff', // Cor anime da horda e portões bons
     ESTILO: 'SELVA'        // Estilo visual principal
