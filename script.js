@@ -30,7 +30,7 @@ resize();
 
 const CFG = {
     speed: 250,
-    eSpeed: 70,
+    eSpeed: 35, // Velocidade dos inimigos significativamente reduzida para maior controle
     eReg: 6,
     weapons: {
         spear: { r: 80, fr: 0.2, dmg: 5, area: 0 },
