@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,15 +8,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="game-container">
         <!-- Overlay UI -->
         <div id="ui-layer">
             <div id="top-bar">
                 <div id="level-indicator">Nível 1</div>
+                <div id="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
                 <div id="score-indicator">Moedas: <span id="coin-count">0</span></div>
             </div>
-            
+
             <div id="main-menu" class="screen active">
                 <h1>Math Legions</h1>
                 <p>Arraste para mover. Multiplique seu exército e derrote os inimigos!</p>
@@ -35,14 +40,15 @@
                 <p class="stats">Moedas ganhas: +<span id="level-coins">0</span></p>
                 <button id="next-level-btn">PRÓXIMO NÍVEL</button>
             </div>
-            
+
             <!-- Floating text container for combat/gates -->
             <div id="floating-texts"></div>
         </div>
 
         <canvas id="game-canvas"></canvas>
     </div>
-    
+
     <script src="script.js"></script>
 </body>
+
 </html>

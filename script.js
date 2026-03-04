@@ -10,6 +10,7 @@ const uiVictory = document.getElementById('victory-screen');
 const btnStart = document.getElementById('start-btn');
 const btnRestart = document.getElementById('restart-btn');
 const btnNextLevel = document.getElementById('next-level-btn');
+const uiProgressBar = document.getElementById('progress-bar');
 
 const txtLevelIndicator = document.getElementById('level-indicator');
 const txtCoinCount = document.getElementById('coin-count');
@@ -36,6 +37,7 @@ let distanceTravelled = 0;
 let gameSpeed = 300; // pixels per second moving forward
 let currentSpeedMult = 1.0;
 let shakeAmount = 0;
+let gameTime = 0;
 
 function applyShake(amt) {
     shakeAmount = Math.max(shakeAmount, amt);
@@ -95,10 +97,14 @@ function spawnFloatingText(x, y, text, type = 'positive') {
     el.className = `floating-text ${type}`;
     el.innerText = text;
 
-    // Convert canvas coords to viewport pixels relative to uiLayer
+    // Anime Impact Text scaling
+    if (text.includes('x') || text.includes('!!')) {
+        el.style.fontSize = '3.5rem';
+        el.style.letterSpacing = '5px';
+    }
+
     const rect = canvas.getBoundingClientRect();
     const uiRect = uiLayer.getBoundingClientRect();
-
     const posX = x + (rect.left - uiRect.left);
     const posY = y + (rect.top - uiRect.top);
 
@@ -106,9 +112,7 @@ function spawnFloatingText(x, y, text, type = 'positive') {
     el.style.top = `${posY}px`;
 
     uiLayer.appendChild(el);
-    setTimeout(() => {
-        el.remove();
-    }, 1000);
+    setTimeout(() => el.remove(), 1000);
 }
 
 // Player (Horde)
@@ -182,8 +186,8 @@ class Gate {
     }
 
     draw(ctx, dy) {
-        let drawY = this.y + dy; // Direction inverted: dy is negative as we go up
-        if (drawY > canvas.height + 100 || drawY < -100) return;
+        let drawY = this.y + dy;
+        if (drawY > canvas.height + 200 || drawY < -200) return;
 
         let midX = canvas.width / 2 + this.xOffset;
 
@@ -230,12 +234,16 @@ class Gate {
 
             let diff = horde.count - oldAmt;
             if (diff > 0) {
-                spawnFloatingText(hx, hy, `+${diff}`, 'positive');
-                playPopSound(600, 'square');
-                spawnParticles(hx, hy, '#00f0ff', 20);
+                let msg = `+${diff}`;
+                if (type === '*') msg = `X${val}!!`;
+                spawnFloatingText(hx, hy, msg, 'positive');
+                playPopSound(600 + Math.random() * 200, 'square');
+                spawnParticles(hx, hy, '#00f0ff', 25);
+                applyShake(5);
             } else if (diff < 0) {
                 spawnFloatingText(hx, hy, `${diff}`, 'negative');
                 playPopSound(200, 'sawtooth');
+                applyShake(10);
             }
         }
     }
@@ -243,7 +251,7 @@ class Gate {
 
 class EnemyGroup {
     constructor(y, count, xOffset) {
-        this.y = y;
+        this.y = y; // World Y coordinate
         this.count = count;
         this.initialCount = count;
         this.x = xOffset;
@@ -297,7 +305,7 @@ class EnemyGroup {
 
 class Boss {
     constructor(y, count) {
-        this.y = y;
+        this.y = y; // World Y coordinate
         this.count = count;
         this.height = 150;
     }
@@ -345,7 +353,7 @@ class Boss {
 
 class MudZone {
     constructor(y, length) {
-        this.y = y;
+        this.y = y; // World Y coordinate
         this.length = length;
     }
     draw(ctx, dy) {
@@ -371,7 +379,7 @@ class MudZone {
 
 class Obstacle {
     constructor(y, x, type = 'wall') {
-        this.y = y;
+        this.y = y; // World Y coordinate
         this.x = x;
         this.type = type;
         this.radius = 30;
@@ -450,48 +458,49 @@ function loadLevel(l) {
     horde.targetX = canvas.width / 2;
     horde.y = canvas.height * 0.85;
 
-    let currentY = horde.y - 400; // Start placing obstacles above player
+    let currentWorldY = 0; // Current progress relative to player
     let numSections = 5 + Math.floor(level / 2);
 
     for (let i = 0; i < numSections; i++) {
-        currentY -= 600; // Moving UP in coordinate space
+        currentWorldY -= 600; // Place objects "ahead" at negative World Y
 
         // Add Gate
         let typeL = '+'; let valL = Math.floor(Math.random() * 10) + level * 2;
         let typeR = '*'; let valR = 2;
         if (level > 2 && Math.random() > 0.5) { typeL = '-'; typeR = '+'; }
-        if (level > 5 && Math.random() > 0.3) { typeL = '/'; typeR = '*'; }
+        if (level > 4 && Math.random() > 0.3) { typeL = '/'; typeR = '*'; }
         if (Math.random() > 0.5) [typeL, valL, typeR, valR] = [typeR, valL, typeL, valR];
 
-        entities.push(new Gate(currentY, typeL, valL, typeR, valR, level > 5 && Math.random() > 0.4));
+        entities.push(new Gate(currentWorldY, typeL, valL, typeR, valR, level > 5 && Math.random() > 0.4));
 
-        // Add Obstacles or Enemies
+        // Add Obstacles or Enemies in between
         if (Math.random() > 0.5) {
-            entities.push(new EnemyGroup(currentY - 300, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
-        } else if (level > 3) {
-            entities.push(new Obstacle(currentY - 300, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
+            entities.push(new EnemyGroup(currentWorldY + 300, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
+        } else if (level > 2) {
+            entities.push(new Obstacle(currentWorldY + 300, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
         }
 
         // Mud Zone
-        if (level > 4 && Math.random() > 0.7) {
-            entities.push(new MudZone(currentY - 450, 300));
+        if (level > 3 && Math.random() > 0.6) {
+            entities.push(new MudZone(currentWorldY + 150, 300));
         }
     }
 
     // Decorate sides
-    for (let d = 0; d < 20; d++) {
+    for (let d = 0; d < 40; d++) {
         decorations.push({
-            x: Math.random() > 0.5 ? 20 : canvas.width - 20,
-            y: d * 500,
-            size: 20 + Math.random() * 30,
-            color: 'rgba(255,255,255,0.1)'
+            x: Math.random() > 0.5 ? 20 + Math.random() * 40 : canvas.width - (20 + Math.random() * 40),
+            y: -d * 300,
+            size: 30 + Math.random() * 40,
+            color: Math.random() > 0.5 ? '#1a4d1a' : '#2d5a27',
+            layer: Math.random() > 0.7 ? 'foreground' : 'background'
         });
     }
 
-    currentY -= 800;
-    bossLevelY = currentY;
-    let bossAmt = 30 + level * 30;
-    entities.push(new Boss(currentY, bossAmt));
+    currentWorldY -= 900;
+    bossLevelY = currentWorldY;
+    let bossAmt = 40 + level * 40;
+    entities.push(new Boss(currentWorldY, bossAmt));
 }
 
 function gameOver() {
@@ -523,15 +532,20 @@ function victory() {
 function update(dt) {
     if (gameState !== 'PLAYING') return;
 
-    distanceTravelled -= gameSpeed * currentSpeedMult * dt; // Negative: going UP
+    gameTime += dt;
+    distanceTravelled += gameSpeed * currentSpeedMult * dt;
     currentSpeedMult = 1.0;
+
+    // Update progress bar
+    let progress = Math.min(100, Math.max(0, (distanceTravelled / -bossLevelY) * 100));
+    uiProgressBar.style.width = `${progress}%`;
 
     // Shake decay
     if (shakeAmount > 0) shakeAmount -= dt * 20;
     else shakeAmount = 0;
 
     // Smooth movement X
-    horde.x += (horde.targetX - horde.x) * 10 * dt;
+    horde.x += (horde.targetX - horde.x) * 15 * dt; // Faster following
 
     // Smooth display count (Juiciness for UI)
     horde.displayCount += (horde.count - horde.displayCount) * 5 * dt;
@@ -546,7 +560,7 @@ function update(dt) {
     // Since bossLevelY is < horde.y, we check if distanceTravelled + bossLevelY is near horde.y
     if (distanceTravelled + bossLevelY > horde.y + 200 && gameState === 'PLAYING') {
         // Fallback if boss not hit somehow
-        // victory(); 
+        // victory();
     }
 }
 
@@ -555,83 +569,152 @@ function drawHorde() {
 
     let radius = Math.min(65, 25 + Math.sqrt(horde.displayCount) * 2.5);
 
+    // Squash and Stretch Logic
+    let velX = (horde.targetX - horde.x) * 0.01;
+    let stretch = Math.min(0.3, Math.abs(velX));
+    let sW = 1 + stretch;
+    let sH = 1 - stretch;
+
+    ctx.save();
+    ctx.translate(horde.x, horde.y);
+    ctx.scale(sW, sH);
+
+    // Motion Trail
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#00f0ff';
+    for (let i = 1; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(0, (i * 15 * currentSpeedMult), radius * (1 - i * 0.2), 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+
     // Anime Glow / Aura
-    ctx.shadowBlur = 25;
+    ctx.shadowBlur = 30;
     ctx.shadowColor = '#00f0ff';
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.fillStyle = '#00bfff';
     ctx.beginPath();
-    ctx.arc(horde.x, horde.y, radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Units inside as "Anime characters" (simple blobs with eyes)
-    let maxDots = Math.min(40, Math.floor(horde.displayCount));
+    // Units inside
+    let maxDots = Math.min(30, Math.floor(horde.displayCount));
+    let wobble = Math.sin(gameTime * 10) * 2;
     for (let i = 0; i < maxDots; i++) {
-        let angle = i * 2.4;
-        let rad = Math.sqrt(i) * (radius / Math.sqrt(maxDots)) * 0.85;
+        let angle = i * 2.4 + gameTime;
+        let rad = Math.sqrt(i) * (radius / Math.sqrt(maxDots)) * 0.8;
         let dx = Math.cos(angle) * rad;
-        let dy = Math.sin(angle) * rad;
+        let dy = Math.sin(angle) * rad + wobble;
 
         ctx.fillStyle = '#e0ffff';
         ctx.beginPath();
-        ctx.arc(horde.x + dx, horde.y + dy, 4, 0, Math.PI * 2);
+        ctx.arc(dx, dy, 5, 0, Math.PI * 2);
         ctx.fill();
         // Eyes
         ctx.fillStyle = '#000';
-        ctx.fillRect(horde.x + dx - 2, horde.y + dy - 1, 1, 2);
-        ctx.fillRect(horde.x + dx + 1, horde.y + dy - 1, 1, 2);
+        let lookDir = (horde.targetX - horde.x) * 0.1;
+        ctx.fillRect(dx - 2 + lookDir, dy - 2, 2, 4);
+        ctx.fillRect(dx + 1 + lookDir, dy - 2, 2, 4);
     }
+    ctx.restore();
 
-    // Count Badge (Stylized)
+    // Count Badge
     ctx.fillStyle = '#000';
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.roundRect(horde.x - 25, horde.y - radius - 35, 50, 25, 10);
+    ctx.roundRect(horde.x - 30, horde.y - radius - 55, 60, 28, 8);
     ctx.fill();
-    ctx.strokeStyle = '#fff';
     ctx.stroke();
 
     ctx.fillStyle = 'white';
-    ctx.font = 'bold 20px Outfit';
+    ctx.font = '900 20px Outfit';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(Math.floor(horde.displayCount), horde.x, horde.y - radius - 22);
+    ctx.fillText(Math.floor(horde.displayCount), horde.x, horde.y - radius - 41);
+}
+
+function drawSpeedlines() {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 15; i++) {
+        let x = (i * 77 + gameTime * 1000) % canvas.width;
+        let len = 50 + Math.random() * 100;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, len);
+        ctx.stroke();
+
+        let x2 = (i * 123 - gameTime * 800) % canvas.width;
+        ctx.beginPath();
+        ctx.moveTo(x2, canvas.height);
+        ctx.lineTo(x2, canvas.height - len);
+        ctx.stroke();
+    }
 }
 
 function drawGrid(dy) {
     // Jungle Background
     let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#004d00'); // Deep jungle green
-    grad.addColorStop(1, '#228B22'); // Forest green
+    grad.addColorStop(0, '#002b00');
+    grad.addColorStop(1, '#004d00');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Subtle leaf pattern instead of grid
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-    for (let i = 0; i < 5; i++) {
-        for (let j = 0; j < 8; j++) {
-            let px = (i * 100 + (dy * 0.2) % 100);
-            let py = (j * 150 + (dy * 0.5) % 150);
-            ctx.beginPath(); ctx.ellipse(px, py, 20, 10, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+    // God Rays (Anime Sunlight)
+    ctx.fillStyle = 'rgba(255, 255, 200, 0.05)';
+    for (let i = 0; i < 3; i++) {
+        ctx.save();
+        ctx.translate(canvas.width / 2, -100);
+        ctx.rotate(0.2 + Math.sin(gameTime * 0.5 + i) * 0.1);
+        ctx.fillRect(-20, 0, 40, canvas.height * 1.5);
+        ctx.restore();
+    }
+
+    // Leaf pattern
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    for (let i = 0; i < 6; i++) {
+        for (let j = 0; j < 10; j++) {
+            let px = (i * 100);
+            let py = (j * 150 + (dy % 150));
+            ctx.beginPath(); ctx.ellipse(px, py, 15, 8, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
         }
     }
 
     // Parallax Jungle Decorations (Leaves/Plants)
     for (let dec of decorations) {
-        let drawY = (dec.y + dy) % (decorations.length * 400);
-        if (drawY < -500) drawY += decorations.length * 400;
+        if (dec.layer === 'foreground') continue;
+        drawLeaf(ctx, dec, dy);
+    }
+}
 
-        ctx.fillStyle = dec.color;
-        // Draw anime style leaf
-        ctx.beginPath();
-        ctx.moveTo(dec.x, drawY);
-        ctx.bezierCurveTo(dec.x + dec.size, drawY - dec.size, dec.x + dec.size, drawY + dec.size, dec.x, drawY + dec.size);
-        ctx.bezierCurveTo(dec.x - dec.size, drawY + dec.size, dec.x - dec.size, drawY - dec.size, dec.x, drawY);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-        ctx.stroke();
+function drawLeaf(ctx, dec, dy) {
+    let drawY = dec.y + dy;
+    // Basic Looping for decorations
+    if (drawY > canvas.height + 200) {
+        dec.y -= 10000; // Reset far up
+    }
+
+    if (drawY < -200 || drawY > canvas.height + 200) return;
+
+    ctx.fillStyle = dec.color;
+    ctx.beginPath();
+    ctx.moveTo(dec.x, drawY);
+    ctx.bezierCurveTo(dec.x + dec.size, drawY - dec.size, dec.x + dec.size, drawY + dec.size, dec.x, drawY + dec.size);
+    ctx.bezierCurveTo(dec.x - dec.size, drawY + dec.size, dec.x - dec.size, drawY - dec.size, dec.x, drawY);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.stroke();
+}
+
+function drawForeground(dy) {
+    for (let dec of decorations) {
+        if (dec.layer !== 'foreground') continue;
+        drawLeaf(ctx, dec, dy * 1.5); // Faster parallax for foreground
     }
 }
 
@@ -644,6 +727,7 @@ function draw(dt) {
     }
 
     drawGrid(distanceTravelled);
+    drawSpeedlines();
 
     // Draw Entities
     for (let e of entities) {
@@ -651,6 +735,8 @@ function draw(dt) {
     }
 
     if (gameState === 'PLAYING') drawHorde();
+
+    drawForeground(distanceTravelled);
 
     // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
