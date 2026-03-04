@@ -32,6 +32,7 @@ resize();
 const CONFIG = {
     DIRECAO: 'CIMA',      // 'CIMA' para correr para cima, 'BAIXO' para correr para baixo
     VELOCIDADE_BASE: 220,  // Velocidade de avanço automática reduzida
+    VELOCIDADE_INIMIGO: 50, // Velocidade com que os inimigos avançam contra o jogador
     SENSIBILIDADE: 2.8,    // Velocidade de movimento lateral aumentada para desvios rápidos
     DIFICULDADE: 1.0,      // Multiplicador de spawn de perigos
     COR_PRIMARIA: '#00f0ff', // Cor anime da horda e portões bons
@@ -266,6 +267,15 @@ class EnemyGroup {
         this.initialCount = count;
         this.x = xOffset;
         this.radius = Math.min(60, 20 + Math.sqrt(count) * 2);
+    }
+
+    update(dt) {
+        // Enemiies move towards the player's Y
+        if (CONFIG.DIRECAO === 'CIMA') {
+            this.y += CONFIG.VELOCIDADE_INIMIGO * dt;
+        } else {
+            this.y -= CONFIG.VELOCIDADE_INIMIGO * dt;
+        }
     }
 
     draw(ctx, dy) {
