@@ -136,7 +136,10 @@ let horde = {
     baseRadius: 2,
     displayCount: 10,
     units: [], // Dynamic units array
-    auraPulse: 0
+    auraPulse: 0,
+    vx: 0,         // Horizontal velocity
+    tilt: 0,       // Current rotation/bank
+    bounce: 1.0    // Growing/Bounce scale
 };
 
 class HordeUnit {
@@ -313,11 +316,13 @@ class Gate {
                 playPopSound(600 + Math.random() * 200, 'square');
                 spawnParticles(hx, hy, '#00f0ff', 25);
                 applyShake(5);
+                horde.bounce = 1.3; // Springy grow effect
             } else if (diff < 0) {
                 spawnFloatingText(hx, hy, `${diff}`, 'negative');
                 playPopSound(200, 'sawtooth');
                 spawnParticles(hx, hy, '#ff3366', 10);
                 applyShake(10);
+                horde.bounce = 0.8; // Shrink impact effect
             }
         }
     }
@@ -811,8 +816,17 @@ function update(dt) {
     if (shakeAmount > 0) shakeAmount -= dt * 20;
     else shakeAmount = 0;
 
-    // Smooth movement X
-    horde.x += (horde.targetX - horde.x) * 15 * dt; // Faster following
+    // Physics-based movement (Momentum)
+    let targetVX = (horde.targetX - horde.x) * 15;
+    horde.vx += (targetVX - horde.vx) * 12 * dt;
+    horde.x += horde.vx * dt;
+
+    // Banking (Tilt) calculation
+    let targetTilt = (horde.vx * 0.0005);
+    horde.tilt += (targetTilt - horde.tilt) * 10 * dt;
+
+    // Bounce decay
+    horde.bounce += (1.0 - horde.bounce) * 8 * dt;
 
     // Smooth display count (Juiciness for UI)
     horde.displayCount += (horde.count - horde.displayCount) * 5 * dt;
@@ -843,6 +857,14 @@ function drawHorde() {
 
     let radius = Math.min(65, 25 + Math.sqrt(horde.count) * 2.5);
 
+    // Check for "Danger"
+    let inDanger = false;
+    for (let e of entities) {
+        if (e instanceof EnemyGroup && Math.abs(e.y - (-distanceTravelled + horde.y)) < 400) {
+            inDanger = true; break;
+        }
+    }
+
     // Squash and Stretch Logic
     let velX = (horde.targetX - horde.x) * 0.01;
     let stretch = Math.min(0.3, Math.abs(velX));
@@ -851,6 +873,8 @@ function drawHorde() {
 
     ctx.save();
     ctx.translate(horde.x, horde.y);
+    ctx.rotate(horde.tilt); // Apply movement banking
+    ctx.scale(horde.bounce, horde.bounce); // Apply growth/shrink bounce
     ctx.scale(sW, sH);
 
     // Motion Trail
@@ -1046,9 +1070,15 @@ function draw(dt) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    if (shakeAmount > 0) {
-        ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
-    }
+    // Camera shake and Dynamic Tilt
+    let camX = (Math.random() - 0.5) * shakeAmount;
+    let camY = (Math.random() - 0.5) * shakeAmount;
+    ctx.translate(camX, camY);
+
+    // Subtle world tilt based on movement
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(-horde.tilt * 0.2);
+    ctx.translate(-canvas.width / 2, -canvas.height / 2);
 
     drawGrid(distanceTravelled);
     drawSpeedlines();
