@@ -36,6 +36,7 @@ const CONFIG = {
     SENSIBILIDADE: 2.8,    // Velocidade de movimento lateral aumentada para desvios rápidos
     DIFICULDADE: 1.0,      // Multiplicador de spawn de perigos
     COR_PRIMARIA: '#00f0ff', // Cor anime da horda e portões bons
+    COR_SECUNDARIA: '#ffcc00', // Dourado para moedas e super aura
     ESTILO: 'SELVA'        // Estilo visual principal
 };
 
@@ -134,7 +135,8 @@ let horde = {
     targetX: canvas.width / 2,
     baseRadius: 2,
     displayCount: 10,
-    units: [] // Dynamic units array
+    units: [], // Dynamic units array
+    auraPulse: 0
 };
 
 class HordeUnit {
@@ -278,8 +280,14 @@ class Gate {
         ctx.fillStyle = 'white';
         ctx.font = 'bold 24px Outfit';
         ctx.textAlign = 'center';
-        ctx.fillText(`${this.typeL}${this.valL}`, midX / 2, drawY + this.height / 2 + 8);
-        ctx.fillText(`${this.typeR}${this.valR}`, midX + (canvas.width - midX) / 2, drawY + this.height / 2 + 8);
+
+        // Pulse effect for gate text
+        let p = Math.sin(gameTime * 10) * 0.1 + 1.0;
+        ctx.save();
+        ctx.scale(p, p);
+        ctx.fillText(`${this.typeL}${this.valL}`, (midX / 2) / p, (drawY + this.height / 2 + 8) / p);
+        ctx.fillText(`${this.typeR}${this.valR}`, (midX + (canvas.width - midX) / 2) / p, (drawY + this.height / 2 + 8) / p);
+        ctx.restore();
     }
 
     checkCollision(hx, hy, dy) {
@@ -614,6 +622,40 @@ class Obstacle {
 // Level Gen
 let bossLevelY = 0;
 let decorations = [];
+class Coin {
+    constructor(y, x) {
+        this.y = y;
+        this.x = x;
+        this.collected = false;
+        this.rot = Math.random() * Math.PI;
+    }
+    update(dt) { this.rot += dt * 5; }
+    draw(ctx, dy) {
+        if (this.collected) return;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
+        if (drawY > canvas.height + 50 || drawY < -50) return;
+        ctx.save();
+        ctx.translate(this.x, drawY);
+        ctx.rotate(this.rot);
+        ctx.fillStyle = CONFIG.COR_SECUNDARIA;
+        ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+    }
+    checkCollision(hx, hy, dy) {
+        if (this.collected) return;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
+        let dist = Math.sqrt((hx - this.x) ** 2 + (hy - drawY) ** 2);
+        if (dist < 40) {
+            this.collected = true;
+            coins += 1;
+            txtCoinCount.innerText = coins;
+            playPopSound(800, 'sine');
+            spawnParticles(this.x, drawY, CONFIG.COR_SECUNDARIA, 8);
+        }
+    }
+}
+
 function loadLevel(l) {
     level = l;
     txtLevelIndicator.innerText = `Nível ${level}`;
@@ -670,6 +712,11 @@ function loadLevel(l) {
         if (level > 3 && Math.random() > 0.6) {
             entities.push(new MudZone(currentWorldY + (offset / 2), 300));
         }
+
+        // Add Coins
+        if (Math.random() > 0.3) {
+            entities.push(new Coin(currentWorldY + (offset * 0.7), 50 + Math.random() * (canvas.width - 100)));
+        }
     }
 
     // Decorate sides
@@ -697,6 +744,21 @@ function gameOver() {
     uiGameOver.classList.add('active');
 }
 
+let confetti = [];
+function shootConfetti() {
+    confetti = [];
+    for (let i = 0; i < 60; i++) {
+        confetti.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * -canvas.height,
+            vy: 2 + Math.random() * 5,
+            vx: (Math.random() - 0.5) * 2,
+            color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+            r: 4 + Math.random() * 4
+        });
+    }
+}
+
 function victory() {
     gameState = 'VICTORY';
     let reward = Math.floor(horde.count * (1 + level * 0.1));
@@ -704,6 +766,9 @@ function victory() {
     txtCoinCount.innerText = coins;
     txtLevelCoins.innerText = reward;
     uiVictory.classList.add('active');
+    txtFinalLevel.innerText = level;
+    txtLevelCoins.innerText = coins;
+    shootConfetti();
 
     // Celebration particles
     for (let i = 0; i < 5; i++) {
@@ -721,6 +786,16 @@ function update(dt) {
     gameTime += dt;
     distanceTravelled += gameSpeed * currentSpeedMult * dt;
     currentSpeedMult = 1.0;
+
+    horde.auraPulse += dt * 5;
+
+    if (gameState === 'VICTORY') {
+        for (let c of confetti) {
+            c.y += c.vy;
+            c.x += c.vx;
+            if (c.y > canvas.height) c.y = -20;
+        }
+    }
 
     // Update progress bar
     let totalD = Math.abs(bossLevelY);
@@ -791,7 +866,7 @@ function drawHorde() {
     ctx.globalAlpha = 1.0;
 
     // Anime Glow / Aura
-    ctx.shadowBlur = 30;
+    ctx.shadowBlur = 30 + Math.sin(horde.auraPulse) * 10;
     ctx.shadowColor = CONFIG.COR_PRIMARIA;
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 4;
@@ -801,6 +876,17 @@ function drawHorde() {
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
+
+    // Super Aura (Limit Break)
+    if (horde.count > 100) {
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = CONFIG.COR_SECUNDARIA;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * (1.2 + Math.sin(horde.auraPulse * 2) * 0.1), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
 
     // Draw each dynamic unit
     for (let unit of horde.units) {
@@ -944,6 +1030,13 @@ function draw(dt) {
     if (gameState === 'PLAYING') drawHorde();
 
     drawForeground(distanceTravelled);
+
+    if (gameState === 'VICTORY') {
+        for (let c of confetti) {
+            ctx.fillStyle = c.color;
+            ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill();
+        }
+    }
 
     // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
