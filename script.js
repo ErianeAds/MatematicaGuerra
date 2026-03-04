@@ -892,17 +892,14 @@ function drawHorde() {
         }
     }
 
-    // Anime Glow / Aura (pulsing)
-    ctx.shadowBlur = 35 + Math.sin(horde.auraPulse) * 12;
-    ctx.shadowColor = CONFIG.COR_PRIMARIA;
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 4;
-    ctx.fillStyle = CONFIG.COR_PRIMARIA;
+    // Simplified Horde Perimeter (No more "Gelatin")
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fill();
     ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.setLineDash([]); // Reset dash
 
     // Super Aura (Limit Break)
     if (horde.count > 100) {
