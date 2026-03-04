@@ -28,13 +28,23 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// --- CONFIGURAÇÕES DO JOGO ---
+const CONFIG = {
+    DIRECAO: 'CIMA',      // 'CIMA' para correr para cima, 'BAIXO' para correr para baixo
+    VELOCIDADE_BASE: 300,  // Velocidade de avanço automática
+    SENSIBILIDADE: 1.8,    // Velocidade de movimento lateral
+    DIFICULDADE: 1.0,      // Multiplicador de spawn de perigos
+    COR_PRIMARIA: '#00f0ff', // Cor anime da horda e portões bons
+    ESTILO: 'SELVA'        // Estilo visual principal
+};
+
 // Game State
 let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER, VICTORY
 let lastTime = 0;
 let level = 1;
 let coins = 0;
 let distanceTravelled = 0;
-let gameSpeed = 300; // pixels per second moving forward
+let gameSpeed = CONFIG.VELOCIDADE_BASE;
 let currentSpeedMult = 1.0;
 let shakeAmount = 0;
 let gameTime = 0;
@@ -138,7 +148,7 @@ function handleInteractionStart(x) {
 function handleInteractionMove(x) {
     if (!isDragging || gameState !== 'PLAYING') return;
     let dx = x - lastMouseX;
-    horde.targetX += dx * 1.5; // Sensitivity boost
+    horde.targetX += dx * CONFIG.SENSIBILIDADE;
     horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
     lastMouseX = x;
 }
@@ -186,19 +196,19 @@ class Gate {
     }
 
     draw(ctx, dy) {
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (drawY > canvas.height + 200 || drawY < -200) return;
 
         let midX = canvas.width / 2 + this.xOffset;
 
         ctx.globalAlpha = 0.5;
         // Left Gate
-        let colorL = (this.typeL === '+' || this.typeL === '*') ? '#00f0ff' : '#ff3366';
+        let colorL = (this.typeL === '+' || this.typeL === '*') ? CONFIG.COR_PRIMARIA : '#ff3366';
         ctx.fillStyle = colorL;
         ctx.fillRect(0, drawY, midX, this.height);
 
         // Right Gate
-        let colorR = (this.typeR === '+' || this.typeR === '*') ? '#00f0ff' : '#ff3366';
+        let colorR = (this.typeR === '+' || this.typeR === '*') ? CONFIG.COR_PRIMARIA : '#ff3366';
         ctx.fillStyle = colorR;
         ctx.fillRect(midX, drawY, canvas.width - midX, this.height);
         ctx.globalAlpha = 1.0;
@@ -218,7 +228,7 @@ class Gate {
 
     checkCollision(hx, hy, dy) {
         if (this.passed) return;
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         let midX = canvas.width / 2 + this.xOffset;
         if (hy < drawY + this.height && hy > drawY) {
             this.passed = true;
@@ -260,7 +270,7 @@ class EnemyGroup {
 
     draw(ctx, dy) {
         if (this.count <= 0) return;
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (drawY > canvas.height + 100 || drawY < -100) return;
 
         ctx.fillStyle = '#ff3366';
@@ -276,7 +286,7 @@ class EnemyGroup {
 
     checkCollision(hx, hy, dy, dt) {
         if (this.count <= 0) return;
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         let dx = hx - this.x;
         let pdy = hy - drawY;
         let dist = Math.sqrt(dx * dx + pdy * pdy);
@@ -312,7 +322,7 @@ class Boss {
 
     draw(ctx, dy) {
         if (this.count <= 0) return;
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (drawY > canvas.height + 200 || drawY < -300) return;
 
         ctx.fillStyle = '#cc0033';
@@ -326,7 +336,7 @@ class Boss {
 
     checkCollision(hx, hy, dy, dt) {
         if (this.count <= 0) return;
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         let playerRad = Math.min(60, 20 + Math.sqrt(horde.displayCount) * 2);
 
         if (hy - playerRad < drawY + this.height && hy + playerRad > drawY) {
@@ -357,7 +367,7 @@ class MudZone {
         this.length = length;
     }
     draw(ctx, dy) {
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (drawY > canvas.height || drawY + this.length < 0) return;
         ctx.fillStyle = 'rgba(101, 67, 33, 0.4)';
         ctx.fillRect(0, drawY, canvas.width, this.length);
@@ -370,7 +380,7 @@ class MudZone {
         }
     }
     checkCollision(hx, hy, dy) {
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (hy > drawY && hy < drawY + this.length) {
             currentSpeedMult = 0.4;
         }
@@ -390,7 +400,7 @@ class Obstacle {
         if (this.type === 'saw') this.angle += 12 * dt;
     }
     draw(ctx, dy) {
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         if (drawY > canvas.height + 100 || drawY < -100) return;
         ctx.save();
         ctx.translate(this.x, drawY);
@@ -426,7 +436,7 @@ class Obstacle {
         ctx.restore();
     }
     checkCollision(hx, hy, dy) {
-        let drawY = this.y + dy;
+        let drawY = (CONFIG.DIRECAO === 'CIMA') ? (this.y + dy) : (this.y - dy);
         let dx = hx - this.x;
         let pdy = hy - drawY;
         let dist = Math.sqrt(dx * dx + pdy * pdy);
@@ -450,19 +460,31 @@ function loadLevel(l) {
     decorations = [];
     distanceTravelled = 0;
     currentSpeedMult = 1.0;
+    gameSpeed = CONFIG.VELOCIDADE_BASE + (level * 10);
 
     // reset horde
     horde.count = 10;
     horde.displayCount = 10;
     horde.x = canvas.width / 2;
     horde.targetX = canvas.width / 2;
-    horde.y = canvas.height * 0.85;
 
-    let currentWorldY = 0; // Current progress relative to player
+    // Position player based on direction
+    if (CONFIG.DIRECAO === 'CIMA') {
+        horde.y = canvas.height * 0.85;
+    } else {
+        horde.y = canvas.height * 0.15;
+    }
+
+    let currentWorldY = 0;
     let numSections = 5 + Math.floor(level / 2);
 
     for (let i = 0; i < numSections; i++) {
-        currentWorldY -= 600; // Place objects "ahead" at negative World Y
+        // Gates are ahead of the player
+        if (CONFIG.DIRECAO === 'CIMA') {
+            currentWorldY -= 600;
+        } else {
+            currentWorldY += 600;
+        }
 
         // Add Gate
         let typeL = '+'; let valL = Math.floor(Math.random() * 10) + level * 2;
@@ -473,34 +495,36 @@ function loadLevel(l) {
 
         entities.push(new Gate(currentWorldY, typeL, valL, typeR, valR, level > 5 && Math.random() > 0.4));
 
+        let offset = (CONFIG.DIRECAO === 'CIMA') ? 300 : -300;
+
         // Add Obstacles or Enemies in between
         if (Math.random() > 0.5) {
-            entities.push(new EnemyGroup(currentWorldY + 300, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
+            entities.push(new EnemyGroup(currentWorldY + offset, 5 + level * 4, 100 + Math.random() * (canvas.width - 200)));
         } else if (level > 2) {
-            entities.push(new Obstacle(currentWorldY + 300, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
+            entities.push(new Obstacle(currentWorldY + offset, 100 + Math.random() * (canvas.width - 200), Math.random() > 0.5 ? 'saw' : 'wall'));
         }
 
         // Mud Zone
         if (level > 3 && Math.random() > 0.6) {
-            entities.push(new MudZone(currentWorldY + 150, 300));
+            entities.push(new MudZone(currentWorldY + (offset / 2), 300));
         }
     }
 
     // Decorate sides
-    for (let d = 0; d < 40; d++) {
+    for (let d = 0; d < 30; d++) {
         decorations.push({
-            x: Math.random() > 0.5 ? 20 + Math.random() * 40 : canvas.width - (20 + Math.random() * 40),
-            y: -d * 300,
-            size: 30 + Math.random() * 40,
-            color: Math.random() > 0.5 ? '#1a4d1a' : '#2d5a27',
-            layer: Math.random() > 0.7 ? 'foreground' : 'background'
+            x: Math.random() > 0.5 ? 40 : canvas.width - 40,
+            y: (CONFIG.DIRECAO === 'CIMA' ? -d : d) * 400,
+            size: 20 + Math.random() * 30,
+            color: Math.random() > 0.5 ? '#228B22' : '#004d00',
+            layer: Math.random() > 0.8 ? 'foreground' : 'background'
         });
     }
 
-    currentWorldY -= 900;
-    bossLevelY = currentWorldY;
+    let finalOffset = (CONFIG.DIRECAO === 'CIMA') ? -900 : 900;
+    bossLevelY = currentWorldY + finalOffset;
     let bossAmt = 40 + level * 40;
-    entities.push(new Boss(currentWorldY, bossAmt));
+    entities.push(new Boss(bossLevelY, bossAmt));
 }
 
 function gameOver() {
@@ -537,7 +561,8 @@ function update(dt) {
     currentSpeedMult = 1.0;
 
     // Update progress bar
-    let progress = Math.min(100, Math.max(0, (distanceTravelled / -bossLevelY) * 100));
+    let totalD = Math.abs(bossLevelY);
+    let progress = Math.min(100, Math.max(0, (distanceTravelled / totalD) * 100));
     uiProgressBar.style.width = `${progress}%`;
 
     // Shake decay
@@ -558,9 +583,16 @@ function update(dt) {
 
     // Win condition - reaching boss Y
     // Since bossLevelY is < horde.y, we check if distanceTravelled + bossLevelY is near horde.y
-    if (distanceTravelled + bossLevelY > horde.y + 200 && gameState === 'PLAYING') {
-        // Fallback if boss not hit somehow
-        // victory();
+    if (CONFIG.DIRECAO === 'CIMA') {
+        if (distanceTravelled + bossLevelY > horde.y + 200 && gameState === 'PLAYING') {
+            // Fallback if boss not hit somehow
+            // victory();
+        }
+    } else { // BAJXO
+        if (distanceTravelled + bossLevelY < horde.y - 200 && gameState === 'PLAYING') {
+            // Fallback if boss not hit somehow
+            // victory();
+        }
     }
 }
 
@@ -581,20 +613,21 @@ function drawHorde() {
 
     // Motion Trail
     ctx.globalAlpha = 0.3;
-    ctx.fillStyle = '#00f0ff';
+    ctx.fillStyle = CONFIG.COR_PRIMARIA;
+    let trailOffset = (CONFIG.DIRECAO === 'CIMA') ? 15 : -15;
     for (let i = 1; i < 4; i++) {
         ctx.beginPath();
-        ctx.arc(0, (i * 15 * currentSpeedMult), radius * (1 - i * 0.2), 0, Math.PI * 2);
+        ctx.arc(0, (i * trailOffset * currentSpeedMult), radius * (1 - i * 0.2), 0, Math.PI * 2);
         ctx.fill();
     }
     ctx.globalAlpha = 1.0;
 
     // Anime Glow / Aura
     ctx.shadowBlur = 30;
-    ctx.shadowColor = '#00f0ff';
+    ctx.shadowColor = CONFIG.COR_PRIMARIA;
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 4;
-    ctx.fillStyle = '#00bfff';
+    ctx.fillStyle = CONFIG.COR_PRIMARIA;
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -624,7 +657,7 @@ function drawHorde() {
 
     // Count Badge
     ctx.fillStyle = '#000';
-    ctx.strokeStyle = '#00f0ff';
+    ctx.strokeStyle = CONFIG.COR_PRIMARIA;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.roundRect(horde.x - 30, horde.y - radius - 55, 60, 28, 8);
@@ -641,15 +674,18 @@ function drawHorde() {
 function drawSpeedlines() {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
     ctx.lineWidth = 2;
+    let speed = (CONFIG.DIRECAO === 'CIMA') ? 1000 : -1000;
     for (let i = 0; i < 15; i++) {
-        let x = (i * 77 + gameTime * 1000) % canvas.width;
+        let x = (i * 77 + gameTime * speed) % canvas.width;
+        if (x < 0) x += canvas.width;
         let len = 50 + Math.random() * 100;
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, len);
         ctx.stroke();
 
-        let x2 = (i * 123 - gameTime * 800) % canvas.width;
+        let x2 = (i * 123 - gameTime * speed * 0.8) % canvas.width;
+        if (x2 < 0) x2 += canvas.width;
         ctx.beginPath();
         ctx.moveTo(x2, canvas.height);
         ctx.lineTo(x2, canvas.height - len);
@@ -675,31 +711,34 @@ function drawGrid(dy) {
         ctx.restore();
     }
 
-    // Leaf pattern
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+    // Subtle leaf pattern instead of grid
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+    let dirSign = (CONFIG.DIRECAO === 'CIMA') ? 1 : -1;
     for (let i = 0; i < 6; i++) {
         for (let j = 0; j < 10; j++) {
             let px = (i * 100);
-            let py = (j * 150 + (dy % 150));
-            ctx.beginPath(); ctx.ellipse(px, py, 15, 8, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+            let py = (j * 150 + (dy * dirSign % 150));
+            ctx.beginPath(); ctx.ellipse(px, py, 20, 10, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
         }
     }
 
     // Parallax Jungle Decorations (Leaves/Plants)
     for (let dec of decorations) {
         if (dec.layer === 'foreground') continue;
-        drawLeaf(ctx, dec, dy);
+        drawLeaf(ctx, dec, dy * dirSign);
     }
 }
 
 function drawLeaf(ctx, dec, dy) {
     let drawY = dec.y + dy;
     // Basic Looping for decorations
-    if (drawY > canvas.height + 200) {
-        dec.y -= 10000; // Reset far up
+    if (CONFIG.DIRECAO === 'CIMA') {
+        if (drawY > canvas.height + 200) dec.y -= 10000;
+    } else {
+        if (drawY < -200) dec.y += 10000;
     }
 
-    if (drawY < -200 || drawY > canvas.height + 200) return;
+    if (drawY < -300 || drawY > canvas.height + 300) return;
 
     ctx.fillStyle = dec.color;
     ctx.beginPath();
@@ -712,9 +751,10 @@ function drawLeaf(ctx, dec, dy) {
 }
 
 function drawForeground(dy) {
+    let dirSign = (CONFIG.DIRECAO === 'CIMA') ? 1 : -1;
     for (let dec of decorations) {
         if (dec.layer !== 'foreground') continue;
-        drawLeaf(ctx, dec, dy * 1.5); // Faster parallax for foreground
+        drawLeaf(ctx, dec, dy * dirSign * 1.5); // Faster parallax for foreground
     }
 }
 
