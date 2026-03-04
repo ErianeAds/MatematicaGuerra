@@ -187,35 +187,41 @@ function updateHordeCount(newCount) {
 
 // Input
 let isDragging = false;
-let lastMouseX = 0;
 
 function handleInteractionStart(x) {
     if (gameState !== 'PLAYING') return;
     isDragging = true;
-    lastMouseX = x;
+    horde.targetX = x;
+    horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
 }
 
 function handleInteractionMove(x) {
     if (!isDragging || gameState !== 'PLAYING') return;
-    let dx = x - lastMouseX;
-    horde.targetX += dx * CONFIG.SENSIBILIDADE;
+    horde.targetX = x;
     horde.targetX = Math.max(30, Math.min(canvas.width - 30, horde.targetX));
-    lastMouseX = x;
 }
 
 function handleInteractionEnd() {
     isDragging = false;
 }
 
-canvas.addEventListener('mousedown', (e) => handleInteractionStart(e.clientX));
-window.addEventListener('mousemove', (e) => handleInteractionMove(e.clientX));
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    handleInteractionStart(e.clientX - rect.left);
+});
+window.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    handleInteractionMove(e.clientX - rect.left);
+});
 window.addEventListener('mouseup', handleInteractionEnd);
 
 canvas.addEventListener('touchstart', (e) => {
-    handleInteractionStart(e.touches[0].clientX);
+    const rect = canvas.getBoundingClientRect();
+    handleInteractionStart(e.touches[0].clientX - rect.left);
 }, { passive: false });
 window.addEventListener('touchmove', (e) => {
-    handleInteractionMove(e.touches[0].clientX);
+    const rect = canvas.getBoundingClientRect();
+    handleInteractionMove(e.touches[0].clientX - rect.left);
 }, { passive: false });
 window.addEventListener('touchend', handleInteractionEnd);
 
