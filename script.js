@@ -145,26 +145,25 @@ class HordeUnit {
         this.relY = (Math.random() - 0.5) * 20;
         this.targetRelX = this.relX;
         this.targetRelY = this.relY;
-        this.scale = 0; // Starts small for "pop-in" effect
-        this.rotation = Math.random() * Math.PI * 2;
+        this.scale = 0;
+        this.bob = Math.random() * Math.PI * 2;
+        this.type = Math.floor(Math.random() * 3);
     }
 
     update(dt, radius) {
-        // Animate scale up
-        if (this.scale < 1) this.scale += dt * 4;
-        if (this.scale > 1) this.scale = 1;
+        if (this.scale < 1) this.scale += dt * 5;
+        this.bob += dt * 15;
 
-        // Swarm behavior: move towards a random spot within the horde radius
         let dist = Math.sqrt(this.relX * this.relX + this.relY * this.relY);
         if (dist > radius || Math.random() > 0.98) {
             let angle = Math.random() * Math.PI * 2;
-            let range = Math.random() * radius;
+            let range = Math.random() * radius * 0.9;
             this.targetRelX = Math.cos(angle) * range;
             this.targetRelY = Math.sin(angle) * range;
         }
 
-        this.relX += (this.targetRelX - this.relX) * 5 * dt;
-        this.relY += (this.targetRelY - this.relY) * 5 * dt;
+        this.relX += (this.targetRelX - this.relX) * 4 * dt;
+        this.relY += (this.targetRelY - this.relY) * 4 * dt;
     }
 }
 
@@ -855,18 +854,22 @@ function drawHorde() {
     ctx.scale(sW, sH);
 
     // Motion Trail
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = CONFIG.COR_PRIMARIA;
-    let trailOffset = (CONFIG.DIRECAO === 'CIMA') ? 15 : -15;
-    for (let i = 1; i < 4; i++) {
-        ctx.beginPath();
-        ctx.arc(0, (i * trailOffset * currentSpeedMult), radius * (1 - i * 0.2), 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.globalAlpha = 1.0;
 
-    // Anime Glow / Aura
-    ctx.shadowBlur = 30 + Math.sin(horde.auraPulse) * 10;
+    // Dynamic Trail Particles (Air trails per unit when moving)
+    if (Math.abs(horde.targetX - horde.x) > 50) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < Math.min(10, horde.units.length); i++) {
+            let u = horde.units[i];
+            ctx.beginPath();
+            ctx.moveTo(u.relX, u.relY);
+            ctx.lineTo(u.relX, u.relY + 30);
+            ctx.stroke();
+        }
+    }
+
+    // Anime Glow / Aura (pulsing)
+    ctx.shadowBlur = 35 + Math.sin(horde.auraPulse) * 12;
     ctx.shadowColor = CONFIG.COR_PRIMARIA;
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 4;
@@ -880,10 +883,10 @@ function drawHorde() {
     // Super Aura (Limit Break)
     if (horde.count > 100) {
         ctx.save();
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.35;
         ctx.fillStyle = CONFIG.COR_SECUNDARIA;
         ctx.beginPath();
-        ctx.arc(0, 0, radius * (1.2 + Math.sin(horde.auraPulse * 2) * 0.1), 0, Math.PI * 2);
+        ctx.arc(0, 0, radius * (1.3 + Math.sin(horde.auraPulse * 1.5) * 0.1), 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
@@ -891,19 +894,47 @@ function drawHorde() {
     // Draw each dynamic unit
     for (let unit of horde.units) {
         ctx.save();
-        ctx.translate(unit.relX, unit.relY);
-        ctx.scale(unit.scale, unit.scale); // Pop-in effect
+        let bobY = Math.sin(unit.bob) * 3;
+        ctx.translate(unit.relX, unit.relY + bobY);
+        ctx.scale(unit.scale, unit.scale);
 
-        ctx.fillStyle = '#e0ffff';
+        // Individual unit shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
         ctx.beginPath();
-        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.ellipse(0, 8 - bobY, 6, 3, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Anime Eyes
+        // Unit Body
+        ctx.fillStyle = '#e0ffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Leg/Foot (running effect)
+        ctx.fillStyle = '#fff';
+        let legX = Math.cos(unit.bob) * 3;
+        ctx.fillRect(legX - 2, 4, 3, 3);
+        ctx.fillRect(-legX - 1, 4, 3, 3);
+
+        // Helmet / Headband (Legion look)
+        ctx.fillStyle = '#ff3366';
+        ctx.fillRect(-5, -6, 10, 3);
+
+        // Anime Eyes (Reactive)
         ctx.fillStyle = '#000';
-        let lookDir = (horde.targetX - horde.x) * 0.1;
-        ctx.fillRect(-2 + lookDir, -2, 2, 4);
-        ctx.fillRect(1 + lookDir, -2, 2, 4);
+        let lookDir = (horde.targetX - horde.x) * 0.08;
+        if (inDanger) {
+            // Angry/Focused eyes (slanted)
+            ctx.beginPath();
+            ctx.moveTo(-3 + lookDir, -2); ctx.lineTo(-1 + lookDir, 0);
+            ctx.moveTo(1 + lookDir, 0); ctx.lineTo(3 + lookDir, -2);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        } else {
+            // Regular kawaii eyes
+            ctx.fillRect(-3 + lookDir, -2, 2, 4);
+            ctx.fillRect(1 + lookDir, -2, 2, 4);
+        }
         ctx.restore();
     }
     ctx.restore();
