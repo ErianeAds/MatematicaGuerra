@@ -124,7 +124,7 @@ resize();
 // BACKGROUND (road.png) - NOVO
 // =========================
 const roadImg = new Image();
-roadImg.src = './road.png'; // mesma pasta do script.js
+roadImg.src = 'road.png'; // mesma pasta do script.js
 
 let roadReady = false;
 roadImg.onload = () => (roadReady = true);
