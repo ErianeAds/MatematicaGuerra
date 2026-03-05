@@ -47,7 +47,41 @@ function resize() {
   positionHorde();
 }
 window.addEventListener('resize', resize);
+// =========================
+// BACKGROUND (road.png)
+// =========================
+const roadImg = new Image();
+roadImg.src = "./road.png"; // mesma pasta do script.js
 
+let roadReady = false;
+roadImg.onload = () => (roadReady = true);
+roadImg.onerror = () => console.warn("Não carregou road.png (verifique nome/pasta).");
+
+// Velocidade visual do fundo (pode ser igual ao dist)
+const BG_SPEED_FACTOR = 1; // 1 = acompanha o jogo, 0.5 mais lento, 1.5 mais rápido
+
+function drawRoadBackground() {
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  // Se ainda não carregou, fallback simples
+  if (!roadReady) {
+    ctx.fillStyle = "#3d2a1a";
+    ctx.fillRect(0, 0, cw, ch);
+    return;
+  }
+
+  // Faz o looping vertical usando a própria altura da imagem
+  const imgH = roadImg.naturalHeight || roadImg.height;
+  const imgW = roadImg.naturalWidth || roadImg.width;
+
+  // offset baseado na distância percorrida
+  const offset = (dist * BG_SPEED_FACTOR) % ch;
+
+  // Desenha duas vezes para “emendar”
+  ctx.drawImage(roadImg, 0, -offset, cw, ch);
+  ctx.drawImage(roadImg, 0, ch - offset, cw, ch);
+}
 // CONFIGURAÇÕES EXPANDIDAS
 const CFG = {
   speed: 250,
@@ -960,27 +994,7 @@ function gameLoop(t) {
   ctx.fillStyle = '#3d2a1a';
   ctx.fillRect(0, 0, cw, ch);
 
-  // Estrada (central)
-  const roadW = 140;
-  const roadX = cw / 2 - roadW / 2;
-
-  ctx.fillStyle = '#5d3a1a';
-  ctx.fillRect(roadX, 0, roadW, ch);
-
-  // Detalhes da estrada
-  ctx.strokeStyle = '#8b4513';
-  ctx.lineWidth = 4;
-  ctx.setLineDash([40, 60]);
-  ctx.beginPath();
-  ctx.moveTo(roadX + 30, 0);
-  ctx.lineTo(roadX + 30, ch);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(roadX + roadW - 30, 0);
-  ctx.lineTo(roadX + roadW - 30, ch);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
+   
   // Decorações
   decors.forEach(d => {
     let dy = d.y + dist;
