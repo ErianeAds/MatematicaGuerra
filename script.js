@@ -272,7 +272,33 @@ function gameLoop(t) {
             if (d.type === 'house') drawHouse(d.x, dy, d.side); else { d.s += 0.05; ctx.fillStyle = d.type === 'lantern' ? '#ffaa00' : '#2d5a2d'; ctx.beginPath(); ctx.arc(d.x + Math.sin(d.s) * 8, dy, 15, 0, 7); ctx.fill(); }
         }
     });
-    entities.forEach(e => e.draw(dist)); projectiles.forEach(p => { ctx.fillStyle = p.type === 'arrow' ? '#ffd966' : '#000'; ctx.beginPath(); ctx.arc(p.x, p.y, p.type === 'arrow' ? 4 : 10, 0, 7); ctx.fill(); });
+    entities.forEach(e => e.draw(dist));
+
+    // Projéteis como risquinhos de luz
+    projectiles.forEach(p => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        // Calcula a direção do tiro para inclinar o risco
+        let angle = Math.atan2(p.ty - p.sy, p.tx - p.sx);
+        ctx.rotate(angle);
+
+        let isArrow = p.type === 'arrow';
+        ctx.strokeStyle = isArrow ? '#ffd966' : '#ff4444';
+        ctx.lineWidth = isArrow ? 3 : 5;
+        ctx.lineCap = 'round';
+
+        // Efeito de brilho (glow)
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = ctx.strokeStyle;
+
+        // Desenha o risquinho de luz
+        ctx.beginPath();
+        ctx.moveTo(-15, 0);
+        ctx.lineTo(15, 0);
+        ctx.stroke();
+
+        ctx.restore();
+    });
     if (state === 'PLAYING') {
         ctx.save(); ctx.translate(h.x, h.y); ctx.rotate(h.tilt);
         if (sShield > 0) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 60, 0, 7); ctx.stroke(); }
