@@ -1,5 +1,5 @@
 
-  
+
 // script.js - Versão Aprimorada (com correções de margem inferior + render responsivo + estrada com road.png)
 const canvas = document.getElementById('game-canvas'),
   ctx = canvas.getContext('2d'),
@@ -51,10 +51,12 @@ function resize() {
 window.addEventListener('resize', resize);
 
 // CONFIGURAÇÕES EXPANDIDAS
+// CONFIGURAÇÕES EXPANDIDAS - Versão Operação Cavalo de Troia
 const CFG = {
-  speed: 250,
-  eSpeed: 35,
-  eReg: 6,
+  speed: 80, // Reduzido para 80 para ser mais devagar (aprox. 2 unidades/seg)
+  bulletSpeedMult: 3,
+  maxWarriors: 20,
+  spawnRate: 3,
   weapons: {
     spear: { r: 80, fr: 0.2, dmg: 5, area: 0, color: '#ffd966', name: 'LANÇA' },
     bow: { r: 350, fr: 0.5, dmg: 4, area: 0, color: '#6fff6f', name: 'ARCO' },
@@ -93,14 +95,18 @@ let state = 'MENU',
   projectiles = [],
   decors = [],
   floatingTexts = [],
-  achievements = [];
+  achievements = [],
+  bulletPool = [];
+
+let lastTap = 0;
+let shotsSimultaneous = 1;
 
 let h = {
   x: 250,
   y: 750,
-  count: 12,
+  count: 1, // Começa com 1 conforme design doc
   targetX: 250,
-  dCount: 12,
+  dCount: 1,
   units: [],
   vx: 0,
   tilt: 0,
@@ -109,6 +115,7 @@ let h = {
   wTimers: { spear: 0, bow: 0, cannon: 0 },
   cooldowns: { arrow: 0, shield: 0, fire: 0, heal: 0 },
   firePower: 1,
+  shootSpeed: 1,
   critChance: 0.05,
   critMultiplier: 2,
   armor: 1,
@@ -180,7 +187,7 @@ const playSnd = (freq, type = 'sine', dur = 0.1, vol = 0.05, detune = 0) => {
     g.connect(audioCtx.destination);
     o.start();
     o.stop(audioCtx.currentTime + dur);
-  } catch (e) {}
+  } catch (e) { }
 };
 
 const playSoundEffect = (type, variation = 0) => {
@@ -300,16 +307,43 @@ function updateHorde(n) {
   } else if (n < old) combo = 1;
 }
 
-// INPUT MELHORADO
+// INPUT MELHORADO COM DOUBLE TAP
 const input = (x, isTap = false) => {
   if (state === 'PLAYING') {
     h.targetX = Math.max(40, Math.min(canvas.width - 40, x));
-    if (isTap && Math.abs(x - h.x) > 100 && h.dodge <= 0) {
-      h.dodge = 0.4;
-      ParticleSystem.spawnTrail(h.x, h.y, '#ffd966');
+
+    if (isTap) {
+      const now = Date.now();
+      const delay = now - lastTap;
+      if (delay < 300 && delay > 10) {
+        fireProjectile();
+      }
+      lastTap = now;
+
+      if (Math.abs(x - h.x) > 100 && h.dodge <= 0) {
+        h.dodge = 0.4;
+        ParticleSystem.spawnTrail(h.x, h.y, '#ffd966');
+      }
     }
   }
 };
+
+function fireProjectile() {
+  const bulletSpeed = CFG.speed * CFG.bulletSpeedMult;
+  for (let i = 0; i < shotsSimultaneous; i++) {
+    const offsetX = (i - (shotsSimultaneous - 1) / 2) * 20;
+    projectiles.push({
+      x: h.x + offsetX,
+      y: h.y,
+      vy: -bulletSpeed,
+      vx: 0,
+      active: true,
+      type: 'bullet',
+      p: 0
+    });
+  }
+  playSoundEffect('attack');
+}
 
 canvas.addEventListener('mousemove', e => input(e.clientX - canvas.getBoundingClientRect().left));
 canvas.addEventListener('mousedown', e => input(e.clientX - canvas.getBoundingClientRect().left, true));
@@ -522,6 +556,25 @@ class Entity {
           u.type || 'normal'
         );
       });
+    } else if (this.type === 'cart') { // Carroça
+      ctx.fillStyle = '#8b4513';
+      ctx.fillRect(-25, -20, 50, 30);
+      ctx.fillStyle = '#5d3a1a';
+      ctx.fillRect(-32, 5, 12, 12);
+      ctx.fillRect(20, 5, 12, 12);
+      ctx.fillStyle = '#ffd966';
+      ctx.font = 'bold 20px Outfit';
+      ctx.textAlign = 'center';
+      ctx.fillText('🛒', 0, 0);
+    } else if (this.type === 'trojan') { // Cavalo de Troia
+      ctx.fillStyle = '#8b4513';
+      ctx.beginPath();
+      ctx.arc(0, 0, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd966';
+      ctx.font = 'bold 24px Outfit';
+      ctx.textAlign = 'center';
+      ctx.fillText('🐴', 0, 8);
     } else if (this.type === 'boss') {
       ctx.fillStyle = '#5d3a1a';
       ctx.fillRect(-120, -100, 240, 240);
@@ -590,65 +643,58 @@ function loadLevel(l) {
   state = 'PLAYING';
   entities = [];
   decors = [];
+  projectiles = [];
   dist = 0;
-  gSpeed = CFG.speed + l * 20;
+  gSpeed = CFG.speed;
+  shotsSimultaneous = 1;
 
-  h.firePower = 1 + level * 0.1;
-  h.critChance = 0.05 + level * 0.01;
-  h.armor = 1;
-  h.luck = 1 + level * 0.05;
+  h.firePower = 1;
+  h.shootSpeed = 1;
+  updateHorde(1); // Começa com 1 conforme design
 
-  updateHorde(15 + l * 3);
+  // Gerar percurso
+  const levelLength = 5000 + l * 2000;
 
-  gateY = -1200;
-  entities.push(new Entity('gate', cx(), gateY, ['+', 10 + l, '-', 2, '*', 2]));
+  // Crossover de entidades
+  for (let i = 0; i < levelLength / 300; i++) {
+    let y = -400 - i * 400;
+    let type = Math.random();
 
-  for (let i = 0; i < 3; i++) {
-    entities.push(new Entity('barrel', canvas.width * 0.2 + Math.random() * (canvas.width * 0.6), gateY - 200 - i * 400, { dmg: 5 }));
-  }
-
-  entities.push(new Entity('powerup', canvas.width * 0.35, gateY - 500, { icon: '⚡', color: '#ffff6f', buff: 'speed' }));
-  entities.push(new Entity('powerup', canvas.width * 0.65, gateY - 800, { icon: '💥', color: '#ff6f6f', buff: 'crit' }));
-
-  for (let i = 0; i < 6 + l * 3; i++) {
-    let e = new Entity('enemy', canvas.width * 0.3 + Math.random() * (canvas.width * 0.4), gateY - 200 - i * 280);
-    let unitCount = 8 + l * 4;
-
-    for (let j = 0; j < unitCount; j++) {
-      e.u.push({
-        x: (Math.random() - 0.5) * 60,
-        y: (Math.random() - 0.5) * 60,
-        l: j === 0,
-        type: Math.random() > 0.8 ? 'elite' : 'normal'
-      });
+    if (type < 0.3) {
+      // Carroça
+      entities.push(new Entity('cart', Math.random() * (canvas.width - 100) + 50, y));
+    } else if (type < 0.6) {
+      // Cavalo de Troia
+      let e = new Entity('trojan', cx(), y);
+      e.swing = Math.random() * Math.PI; // Para o zigzag
+      entities.push(e);
+    } else {
+      // Legião Inimiga
+      let e = new Entity('enemy', Math.random() * (canvas.width - 150) + 75, y);
+      let count = 3 + l + Math.floor(Math.random() * 5);
+      for (let j = 0; j < count; j++) {
+        e.u.push({
+          x: (Math.random() - 0.5) * 80,
+          y: (Math.random() - 0.5) * 40,
+          l: j === 0
+        });
+      }
+      entities.push(e);
     }
-    entities.push(e);
   }
 
-  bossLevelY = gateY - 1800;
-  entities.push(new Entity('boss', cx(), gateY - 1800, 300 + l * 250));
+  // Boss no final
+  bossLevelY = -levelLength;
+  entities.push(new Entity('boss', cx(), bossLevelY, 100 + l * 200));
 
-  for (let i = 0; i < 8; i++) {
-    entities.push(new Entity('coin', canvas.width * 0.1 + Math.random() * (canvas.width * 0.8), gateY - 400 - i * 250));
-  }
-
-  // decoração
-  for (let i = 0; i < 25; i++) {
+  // Decoração lateral
+  for (let i = 0; i < levelLength / 280; i++) {
     decors.push({ x: 40, y: -i * 280, type: 'house', side: 'left' });
     decors.push({ x: canvas.width - 40, y: -i * 280, type: 'house', side: 'right' });
   }
 
-  for (let i = 0; i < 40; i++) {
-    decors.push({
-      x: Math.random() > 0.5 ? 20 : canvas.width - 20,
-      y: -i * 350,
-      type: Math.random() > 0.5 ? 'lantern' : 'bamboo',
-      s: Math.random() * 6
-    });
-  }
-
   playSoundEffect('levelUp', 3);
-  FloatingText.add(cx(), canvas.height * 0.45, `NÍVEL ${l}`, 'special');
+  FloatingText.add(cx(), canvas.height * 0.45, `OPERAÇÃO CAVALO DE TROIA - NÍVEL ${l}`, 'special');
 }
 
 // GAMELOOP OTIMIZADO E EXPANDIDO
@@ -682,9 +728,9 @@ function gameLoop(t) {
     for (let w in h.wTimers) h.wTimers[w] = Math.max(0, h.wTimers[w] - dt);
 
     if (h.dodge > 0) h.dodge -= dt;
-    h.vx += ((h.targetX - h.x) * 18 - h.vx) * dt * 12;
+    h.vx += ((h.targetX - h.x) * 10 - h.vx) * dt * 8; // Suavizado o movimento lateral
     h.x += h.vx * dt;
-    h.tilt = h.vx * 0.0008;
+    h.tilt = h.vx * 0.0015; // Ajustado tilt para novo multiplicador de velocidade
     h.dCount += (h.count - h.dCount) * dt * 7;
 
     let rad = 35 + Math.sqrt(h.count) * 2.5;
@@ -708,71 +754,56 @@ function gameLoop(t) {
       }
     });
 
-    // PROJÉTEIS EXPANDIDOS
+    // PROJÉTEIS (Object Pool Logic Simplified)
     projectiles = projectiles.filter(p => {
-      p.p += (p.type === 'arrow' ? 15 : 7) * dt;
-      let T = Math.min(1, p.p);
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
 
-      if (p.type === 'arrow') {
-        p.x = p.sx + (p.tx - p.sx) * T;
-        p.y = p.sy + (p.ty - p.sy) * T - Math.sin(T * Math.PI) * 70;
-      } else {
-        p.x = p.sx + (p.tx - p.sx) * T;
-        p.y = p.sy + (p.ty - p.sy) * T;
-      }
+      // Trail
+      if (Math.random() > 0.7) ParticleSystem.spawnTrail(p.x, p.y, '#ffd966');
 
-      if (Math.random() > 0.7) {
-        ParticleSystem.spawnTrail(p.x, p.y, p.type === 'arrow' ? '#ffd966' : '#ff4444');
-      }
+      // Check collision with screen boundaries
+      if (p.y < -100 || p.y > canvas.height + 100) return false;
 
-      if (p.p >= 1) {
-        shake = p.type === 'cannon' ? 15 : 8;
+      // Colisão com Entidades
+      for (let e of entities) {
+        if (e.dead) continue;
+        let ey = e.y + dist;
+        let d = Math.sqrt((p.x - e.x) ** 2 + (p.y - ey) ** 2);
 
-        let dmg = p.dmg || (p.type === 'arrow' ? 4 : 15);
-
-        if (Math.random() < h.critChance) {
-          dmg *= h.critMultiplier;
-          FloatingText.add(p.x, p.y, 'CRÍTICO!', 'critical');
-        }
-
-        if (p.type === 'cannon') {
-          ParticleSystem.spawn(p.x, p.y, '#ff4444', 25, 'explosion');
-          playSoundEffect('hit', 2);
-
-          entities.forEach(e => {
-            if (e.type === 'enemy') {
-              let d = Math.sqrt((p.x - e.x) ** 2 + (p.y - (e.y + dist)) ** 2);
-              if (d < 130) {
-                let kills = Math.min(e.u.length, Math.floor(dmg * h.firePower));
-                for (let j = 0; j < kills; j++) e.u.pop();
-                totalKills += kills;
-                h.kills += kills;
-                e.f = 0.3;
-                updateCombo(kills);
-              }
+        if (d < 50) {
+          if (e.type === 'cart') {
+            shotsSimultaneous = Math.min(5, shotsSimultaneous + 1);
+            h.shootSpeed += 0.2;
+            floating(e.x, ey, '🚀 TIROS +1', 'positive');
+            e.dead = true;
+          } else if (e.type === 'trojan') {
+            if (h.count < CFG.maxWarriors) {
+              updateHorde(h.count + 1);
+              floating(e.x, ey, '⚔️ +1 GUERREIRO', 'positive');
+            } else {
+              energy = Math.min(100, energy + 20);
+              floating(e.x, ey, '⚡ ENERGIA FULL', 'special');
             }
-            if (e.type === 'barrel') {
-              let d = Math.sqrt((p.x - e.x) ** 2 + (p.y - (e.y + dist)) ** 2);
-              if (d < 120) {
-                h.firePower += 0.6;
-                floating(e.x, e.y + dist, '🔥 PODER +60%', 'positive');
-                ParticleSystem.spawn(e.x, e.y + dist, '#ffaa00', 35, 'explosion');
-                e.dead = true;
-                playSoundEffect('skill', 2);
-              }
+            e.dead = true;
+          } else if (e.type === 'enemy') {
+            if (e.u.length > 0) {
+              e.u.pop();
+              if (e.u.length === 0) e.dead = true;
+              h.kills++;
+              totalKills++;
+              updateCombo(1);
             }
-          });
-        } else if (p.type === 'arrow' && p.target) {
-          if (p.target.u.length > 0) {
-            p.target.u.pop();
-            totalKills++;
-            h.kills++;
-            updateCombo(1);
+          } else if (e.type === 'boss') {
+            e.v -= 10 * h.firePower;
+            if (e.v <= 0) win();
+          }
+
+          if (e.dead || e.type === 'boss' || e.type === 'enemy') {
             ParticleSystem.spawn(p.x, p.y, '#ffd966', 8, 'sparkle');
-            playSoundEffect('hit');
+            return false;
           }
         }
-        return false;
       }
       return true;
     });
@@ -783,199 +814,32 @@ function gameLoop(t) {
     entities.forEach(e => {
       let Y = e.y + dist;
 
-      if (e.type === 'gate' && h.y > Y && h.y < Y + 100) {
-        let onL = h.x < canvas.width / 2,
-          op = onL ? e.v[0] : e.v[2],
-          val = onL ? e.v[1] : e.v[3],
-          n = h.count;
-
-        if (op === '+') n += val;
-        else if (op === '-') n -= val;
-        else if (op === '*') n *= val;
-        else n = Math.max(1, Math.floor(n / val));
-
-        updateHorde(n);
-        e.dead = true;
-        ParticleSystem.spawn(e.x, Y, '#ffd966', 20, 'explosion');
-        playSoundEffect(op === '+' ? 'collect' : 'hit');
-      }
-
-      if (e.type === 'enemy') {
-        if (e.u.length === 0) {
-          e.dead = true;
-          totalKills += 5;
-          h.kills += 5;
-          coins += 2;
-          ParticleSystem.spawn(e.x, Y, '#ff6f6f', 15, 'explosion');
-          playSoundEffect('kill');
-          return;
-        }
-
-        if (e.burning > 0) {
-          e.burning -= dt;
-          if (Math.random() > 0.9) {
-            e.u.pop();
-            ParticleSystem.spawn(
-              e.x + (Math.random() - 0.5) * 50,
-              Y + (Math.random() - 0.5) * 50,
-              '#ff4444',
-              3,
-              'sparkle'
-            );
-          }
-        }
-
+      if (e.type === 'cart') {
+        e.y += 50 * dt; // Carroça desce mais devagar (50px/s em vez de 100)
+      } else if (e.type === 'trojan') {
+        e.swing += dt * 3;
+        e.x = cx() + Math.sin(e.swing) * 150; // Zigzag
+      } else if (e.type === 'enemy') {
+        // Colisão direta com a horda
         let d = Math.sqrt((h.x - e.x) ** 2 + (h.y - Y) ** 2);
-
-        if (d < 120) {
-          let dmg = Math.ceil(180 * dt * (h.count / 50 + 1) * (combo / 15 + 1) * h.firePower / h.armor);
-
-          for (let i = 0; i < dmg && e.u.length > 0; i++) {
-            e.u.pop();
-            if (h.dodge <= 0 && sShield <= 0) {
-              updateHorde(h.count - 1);
-            }
-          }
-
-          if (h.count <= 0) fail();
-
-          if (Math.random() > 0.7) {
-            ParticleSystem.spawn(e.x, Y, '#ffffff', 5, 'sparkle');
-          }
-        }
-
-        projectiles.forEach(p => {
-          if (p.type === 'arrow' && Math.sqrt((p.x - e.x) ** 2 + (p.y - Y) ** 2) < 70) {
-            e.u.pop();
-            totalKills++;
-            h.kills++;
-            updateCombo(1);
-            p.p = 1;
-            e.f = 0.3;
-            ParticleSystem.spawn(p.x, p.y, '#ffd966', 5, 'sparkle');
-          }
-        });
-
-        if (Math.abs(Y - h.y) < 600) {
-          e.x += (h.x - e.x) * dt * 1.8;
-        }
-        e.y += CFG.eSpeed * dt * (1 + level * 0.1);
-
-        if (e.f > 0) e.f -= dt;
-        if (e.burning > 0) e.burning -= dt;
-      }
-
-      if (e.type === 'boss') {
-        if (h.y < Y + 220 && h.y > Y - 50) {
-          let d = 350 * dt * (combo / 20 + 1) * h.firePower;
-          let isCrit = Math.random() < h.critChance;
-          if (isCrit) d *= h.critMultiplier;
-
-          e.v -= d;
-
+        if (d < 100 && e.u.length > 0) {
           if (h.dodge <= 0 && sShield <= 0) {
-            let damageToHorde = (d * 0.3) / h.armor;
-            updateHorde(h.count - damageToHorde);
+            updateHorde(h.count - 10 * dt);
           }
-
-          if (isCrit) {
-            FloatingText.add(e.x, Y, 'CRÍTICO!', 'critical');
-            ParticleSystem.spawn(e.x, Y, '#ff4444', 20, 'explosion');
-          }
-
-          if (e.v <= 0) {
-            win();
-            ParticleSystem.spawn(e.x, Y, '#ffd966', 50, 'explosion');
-          }
-
-          if (Math.random() > 0.98) {
-            ParticleSystem.spawn(e.x, Y, '#ff0000', 15, 'explosion');
-            if (Math.random() > 0.5) {
-              updateHorde(h.count - 2);
-            }
-            playSoundEffect('boss');
-          }
+          if (Math.random() > 0.9) e.u.pop();
+          if (h.count <= 0) fail();
         }
-      }
-
-      if (e.type === 'powerup' && Math.sqrt((h.x - e.x) ** 2 + (h.y - Y) ** 2) < 60) {
-        if (e.v.buff === 'speed') {
-          h.speedBoost += 0.3;
-          FloatingText.add(h.x, h.y, '⚡ VELOCIDADE +30%', 'positive');
-        } else if (e.v.buff === 'crit') {
-          h.critChance += 0.1;
-          FloatingText.add(h.x, h.y, '💥 CRÍTICO +10%', 'positive');
+      } else if (e.type === 'boss') {
+        if (h.y < Y + 220 && h.y > Y - 50) {
+          e.v -= 50 * dt;
+          if (h.dodge <= 0 && sShield <= 0) updateHorde(h.count - 5 * dt);
+          if (e.v <= 0) win();
+          if (h.count <= 0) fail();
         }
-        ParticleSystem.spawn(e.x, Y, e.v.color, 20, 'explosion');
-        playSoundEffect('collect', 2);
-        e.dead = true;
-      }
-
-      if (e.type === 'coin' && Math.sqrt((h.x - e.x) ** 2 + (h.y - Y) ** 2) < 60) {
-        coins += 2;
-        energy = Math.min(100, energy + 8);
-        ParticleSystem.spawn(e.x, Y, '#ffd966', 10, 'sparkle');
-        playSoundEffect('collect');
-        e.dead = true;
-      }
-
-      if (e.type === 'barrel' && Math.sqrt((h.x - e.x) ** 2 + (h.y - Y) ** 2) < 60) {
-        h.firePower += 0.4;
-        h.critChance += 0.03;
-        floating(h.x, h.y, '🔥 PODER +40%', 'positive');
-        ParticleSystem.spawn(e.x, Y, '#ffaa00', 25, 'explosion');
-        e.dead = true;
-        playSoundEffect('skill');
       }
     });
 
-    // ARMAS AUTOMÁTICAS
-    let target = entities.find(
-      e => e.type === 'enemy' && Math.abs(e.y + dist - h.y) < CFG.weapons[h.weapon].r && e.u.length > 0
-    );
-    if (target && h.wTimers[h.weapon] <= 0) {
-      if (h.weapon === 'bow' && arrows > 0) {
-        projectiles.push({
-          sx: h.x,
-          sy: h.y,
-          x: h.x,
-          y: h.y,
-          tx: target.x,
-          ty: target.y + dist,
-          p: 0,
-          type: 'arrow',
-          dmg: 4 * h.firePower,
-          target: target
-        });
-        arrows--;
-        h.wTimers.bow = 0.4;
-        playSoundEffect('attack');
-      } else if (h.weapon === 'cannon') {
-        projectiles.push({
-          sx: h.x,
-          sy: h.y,
-          x: h.x,
-          y: h.y,
-          tx: target.x,
-          ty: target.y + dist,
-          p: 0,
-          type: 'cannon',
-          dmg: 15 * h.firePower
-        });
-        h.wTimers.cannon = 1.0;
-        playSoundEffect('attack', 1);
-      } else if (h.weapon === 'spear' && Math.abs(target.x - h.x) < 100) {
-        let kills = Math.min(target.u.length, Math.floor(5 * h.firePower));
-        for (let i = 0; i < kills; i++) target.u.pop();
-        totalKills += kills;
-        h.kills += kills;
-        updateCombo(kills);
-        ParticleSystem.spawn(target.x, target.y + dist, '#ffd966', 10, 'sparkle');
-        h.wTimers.spear = 0.3;
-        playSoundEffect('hit');
-      }
-    }
-
+    // ARMAS AUTOMÁTICAS DESATIVADAS - Foco em Tiro Manual (Double Tap)
     updateUI();
     if (shake > 0) shake -= dt * 50;
   }
@@ -1013,46 +877,21 @@ function gameLoop(t) {
   // Entidades
   entities.forEach(e => e.draw(dist));
 
-  // Projéteis
+  // Projéteis (Balas Manuais)
   projectiles.forEach(p => {
     ctx.save();
     ctx.translate(p.x, p.y);
-    let angle = Math.atan2(p.ty - p.sy, p.tx - p.sx);
-    ctx.rotate(angle);
 
-    let isArrow = p.type === 'arrow';
-    let gradient = ctx.createLinearGradient(-15, 0, 15, 0);
-
-    if (isArrow) {
-      gradient.addColorStop(0, '#fff6bf');
-      gradient.addColorStop(0.5, '#ffd966');
-      gradient.addColorStop(1, '#ffaa00');
-    } else {
-      gradient.addColorStop(0, '#ffbfbf');
-      gradient.addColorStop(0.5, '#ff6f6f');
-      gradient.addColorStop(1, '#ff0000');
-    }
-
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = isArrow ? 4 : 6;
-    ctx.lineCap = 'round';
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = isArrow ? '#ffd966' : '#ff4444';
-
+    ctx.fillStyle = '#ffd966';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#ffaa00';
     ctx.beginPath();
-    ctx.moveTo(-20, 0);
-    ctx.lineTo(20, 0);
-    ctx.stroke();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
 
-    if (isArrow) {
-      ctx.fillStyle = '#ffd966';
-      ctx.beginPath();
-      ctx.moveTo(20, 0);
-      ctx.lineTo(10, -5);
-      ctx.lineTo(10, 5);
-      ctx.closePath();
-      ctx.fill();
-    }
+    // Rastro de luz
+    ctx.fillStyle = 'rgba(255, 217, 102, 0.3)';
+    ctx.fillRect(-3, 0, 6, 20);
 
     ctx.restore();
   });
@@ -1247,15 +1086,15 @@ el('next-level-btn').addEventListener('click', () => {
 // INICIALIZAÇÃO
 requestAnimationFrame(gameLoop);
 
-// DICAS DE JOGO
+// DICAS DE JOGO - Operação Cavalo de Troia
 const tips = [
-  '💡 Use o ESCUDO antes de enfrentar grupos grandes!',
-  '💡 Combine CANHÃO com BARRIS para dano massivo!',
-  '💡 Mantenha o COMBO para multiplicar seu poder!',
-  '💡 Flechas são ótimas para inimigos distantes!',
-  '💡 A LANÇA causa dano em área!',
-  '💡 Power-ups roxos aumentam seu crítico!',
-  '💡 Cada 10 de combo aumenta seu dano!'
+  '💡 Toque DUAS VEZES para atirar em inimigos!',
+  '💡 Acerte a CARROÇA para aumentar seus disparos simultâneos!',
+  '💡 Use o CAVALO DE TROIA para ganhar mais aliados!',
+  '💡 Cuidado com a LEGIÃO INIMIGA no topo da tela!',
+  '💡 Você pode ter no máximo 20 guerreiros!',
+  '💡 Aqueça os tambores para a batalha final contra o MONSTRO!',
+  '💡 Tiros simultâneos ajudam a limpar o caminho mais rápido!'
 ];
 
 setInterval(() => {
@@ -1268,15 +1107,15 @@ setInterval(() => {
 
 
 
-  
-  
 
-    
-  
-        
 
-      
-  
-        
-          l
-        
+
+
+
+
+
+
+
+
+l
+
