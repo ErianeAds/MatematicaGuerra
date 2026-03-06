@@ -4,72 +4,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Math Legions: Imperial Quest</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Noto+Serif+SC:wght@700;900&display=swap"
+    <title>Legiões Míticas: A Ira de Troia</title>
+    <!-- Fontes estilizadas para dar um ar épico/medieval -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=MedievalSharp&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <div id="game-container">
-        <!-- Overlay UI -->
+        <!-- Camada da Interface do Usuário (sobreposta ao canvas) -->
         <div id="ui-layer">
-            <div id="top-bar">
-                <div id="level-indicator">⚔️ Nível 1</div>
+            <!-- Barra Superior com vidro fosco (glassmorphism) -->
+            <div id="top-bar" class="glass-panel">
+                <!-- Indicador de nível com ícone de espadas -->
+                <div id="level-indicator">
+                    <span class="icon">⚔️</span>
+                    <span class="text">Nível <span id="level-num">1</span></span>
+                </div>
+
+                <!-- Barra de progresso da fase -->
                 <div id="progress-container">
                     <div id="progress-bar"></div>
+                    <div id="progress-glow"></div> <!-- Efeito de brilho -->
                 </div>
+
+                <!-- Recursos do jogador (moedas e energia) -->
                 <div id="resources">
-                    <div class="resource">
+                    <div class="resource" id="coin-resource">
                         <span class="resource-icon">🪙</span>
-                        <span id="coin-count">0</span>
+                        <span id="coin-count" class="resource-value">0</span>
                     </div>
-                    <div class="resource">
+                    <div class="resource" id="energy-resource">
                         <span class="resource-icon">⚡</span>
-                        <span id="energy-count">100</span>
-                    </div>
-                    <div class="resource">
-                        <span class="resource-icon">🏹</span>
-                        <span id="arrow-count">0</span>
+                        <span id="energy-count" class="resource-value">100</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Tela do Menu Principal -->
             <div id="main-menu" class="screen active">
-                <div class="menu-decoration">
-                    <span class="dragon-left">🐉</span>
-                    <span class="dragon-right">🐉</span>
+                <!-- Fundo com partículas animadas -->
+                <div class="menu-background">
+                    <div class="particle-field"></div>
                 </div>
-                <h1>Operação Cavalo de Troia</h1>
-                <p>Comande sua horda, toque duas vezes para atirar e conquiste a vitória!</p>
-                <button id="start-btn">INICIAR OPERAÇÃO</button>
+
+                <!-- Conteúdo do menu -->
+                <div class="menu-content">
+                    <h1 class="epic-title">LEGIÕES MÍTICAS</h1>
+                    <h2 class="subtitle">A Ira de Troia</h2>
+
+                    <!-- Decoração com ícones animados -->
+                    <div class="title-decoration">
+                        <span class="decoration-left">⚔️</span>
+                        <span class="decoration-center">🏛️</span>
+                        <span class="decoration-right">🛡️</span>
+                    </div>
+
+                    <p class="menu-text">Comande seus guerreiros lendários através dos portões de Troia</p>
+
+                    <!-- Botão épico com efeito de brilho -->
+                    <button id="start-btn" class="epic-button">
+                        <span class="button-glow"></span>
+                        <span class="button-text">INICIAR O CERCO</span>
+                    </button>
+                </div>
             </div>
 
+            <!-- Tela de Game Over -->
             <div id="game-over-screen" class="screen">
-                <h1 id="end-title">💀 DERROTA 💀</h1>
-                <p id="end-message">O Império caiu...</p>
-                <div class="stats">
-                    <p>Nível: <span id="final-level">1</span></p>
-                    <p>Inimigos Abatidos: <span id="final-kills">0</span></p>
+                <div class="menu-background dark"></div>
+                <div class="menu-content">
+                    <h1 class="defeat-title">DERROTA</h1>
+                    <div class="skull-decoration">💀</div> <!-- Caveira animada -->
+                    <p class="menu-text">As muralhas caíram...</p>
+
+                    <!-- Painel de estatísticas -->
+                    <div class="stats-panel">
+                        <p>Nível Alcançado: <span id="final-level">1</span></p>
+                        <p>Inimigos Abatidos: <span id="final-kills">0</span></p>
+                    </div>
+
+                    <button id="restart-btn" class="epic-button small">
+                        <span class="button-text">REUNIR TROPAS</span>
+                    </button>
                 </div>
-                <button id="restart-btn">REORGANIZAR TROPAS</button>
             </div>
 
+            <!-- Tela de Vitória -->
             <div id="victory-screen" class="screen">
-                <div class="menu-decoration">✨ 🏮 ✨</div>
-                <h1 class="victory-title">大胜利！</h1>
-                <p>Você destruiu a fortaleza inimiga com glória!</p>
-                <div class="stats">
-                    <p>Moedas ganhas: +<span id="level-coins">0</span></p>
+                <div class="menu-background victory"></div>
+                <div class="menu-content">
+                    <h1 class="victory-title">VITÓRIA</h1>
+                    <div class="laurel-decoration">🏆</div> <!-- Troféu giratório -->
+                    <p class="menu-text">A cidade é sua!</p>
+
+                    <div class="stats-panel">
+                        <p>Butim de Guerra: +<span id="level-coins">0</span> 🪙</p>
+                    </div>
+
+                    <button id="next-level-btn" class="epic-button">
+                        <span class="button-text">AVANÇAR LEGIÃO</span>
+                    </button>
                 </div>
-                <button id="next-level-btn">AVANÇAR IMPÉRIO</button>
             </div>
         </div>
 
+        <!-- Canvas principal do jogo (onde tudo é desenhado) -->
         <canvas id="game-canvas"></canvas>
     </div>
 
+    <!-- Script principal do jogo -->
     <script src="script.js"></script>
 </body>
 
