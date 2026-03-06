@@ -54,6 +54,8 @@ window.addEventListener('resize', resize);
 // CONFIGURAÇÕES EXPANDIDAS - Versão Operação Cavalo de Troia
 const CFG = {
   speed: 80, // Reduzido para 80 para ser mais devagar (aprox. 2 unidades/seg)
+  eSpeed: 35, // Velocidade base dos inimigos
+  eReg: 6, // Regeneração de energia por segundo
   bulletSpeedMult: 3,
   maxWarriors: 20,
   spawnRate: 3,
@@ -136,6 +138,12 @@ roadImg.src = 'road.png'; // mesma pasta do script.js
 let roadReady = false;
 roadImg.onload = () => (roadReady = true);
 roadImg.onerror = () => console.warn('Não carregou road.png (verifique nome/pasta).');
+
+const soldierImg = new Image();
+soldierImg.src = 'soldier.png';
+let soldierReady = false;
+soldierImg.onload = () => (soldierReady = true);
+soldierImg.onerror = () => console.warn('Não carregou soldier.png.');
 
 // Velocidade visual do fundo (acompanha a “caminhada”)
 const BG_SPEED_FACTOR = 1; // 0.7 mais suave, 1 normal, 1.2 mais rápido
@@ -444,29 +452,45 @@ const drawMan = (x, y, headCol, bodyCol, plumeCol, size = 1, type = 'normal') =>
   ctx.translate(x, y);
   ctx.scale(size, size);
 
-  ctx.fillStyle = bodyCol;
-  ctx.fillRect(-4, 0, 8, 10);
+  if (soldierReady) {
+    // Desenha a imagem do soldado
+    // Centraliza a imagem (-20, -40 para um tamanho de 40x60 aprox)
+    const imgWidth = 40;
+    const imgHeight = 60;
 
-  ctx.shadowBlur = type === 'elite' ? 15 : 0;
-  ctx.shadowColor = '#ffd966';
-  ctx.fillStyle = headCol;
-  ctx.beginPath();
-  ctx.arc(0, -4, 5, 0, 7);
-  ctx.fill();
-
-  if (plumeCol) {
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = plumeCol;
-    ctx.fillRect(-2, -9, 4, 5);
-
-    if (type === 'elite') {
-      ctx.fillStyle = '#ffd966';
-      ctx.fillRect(-1, -11, 2, 3);
+    // Se for elite ou líder, adiciona um brilho
+    if (type === 'elite' || plumeCol) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#ffd966';
     }
-  }
 
-  ctx.fillStyle = '#aaa';
-  ctx.fillRect(5, -2, 4, 2);
+    ctx.drawImage(soldierImg, -imgWidth / 2, -imgHeight + 10, imgWidth, imgHeight);
+  } else {
+    // Fallback: Desenho procedural antigo
+    ctx.fillStyle = bodyCol;
+    ctx.fillRect(-4, 0, 8, 10);
+
+    ctx.shadowBlur = type === 'elite' ? 15 : 0;
+    ctx.shadowColor = '#ffd966';
+    ctx.fillStyle = headCol;
+    ctx.beginPath();
+    ctx.arc(0, -4, 5, 0, 7);
+    ctx.fill();
+
+    if (plumeCol) {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = plumeCol;
+      ctx.fillRect(-2, -9, 4, 5);
+
+      if (type === 'elite') {
+        ctx.fillStyle = '#ffd966';
+        ctx.fillRect(-1, -11, 2, 3);
+      }
+    }
+
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(5, -2, 4, 2);
+  }
 
   ctx.restore();
 };
