@@ -1,0 +1,288 @@
+
+/* =====================================
+   LEGIÕES MÍTICAS - TEMA AZUL CLARO
+   ===================================== */
+
+:root {
+
+  --blue-main: #2f6ea8;
+  --blue-light: #66aee8;
+  --blue-soft: #9ed2f2;
+  --blue-dark: #1b4f7a;
+
+  --cream: #f6eddc;
+  --cream-dark: #e4dac6;
+
+  --bg-light: #eaf4fb;
+  --bg-medium: #d7eaf7;
+
+  --text-dark: #1c2b38;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+/* BODY */
+
+body{
+
+  background:linear-gradient(
+    180deg,
+    #dff1fb 0%,
+    #cfe7f8 50%,
+    #f6eddc 100%
+  );
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  min-height:100vh;
+  font-family:'Cinzel', serif;
+}
+
+/* GAME CONTAINER */
+
+#game-container{
+
+  position:relative;
+
+  width:100%;
+  max-width:500px;
+
+  height:100vh;
+  max-height:900px;
+
+  background:#f7fbff;
+
+  border-radius:24px;
+
+  overflow:hidden;
+
+  box-shadow:
+  0 10px 30px rgba(0,0,0,0.2),
+  0 0 0 2px var(--blue-light);
+
+}
+
+/* CANVAS */
+
+canvas{
+
+  position:absolute;
+  width:100%;
+  height:100%;
+
+}
+
+/* UI */
+
+#ui-layer{
+
+  position:absolute;
+
+  width:100%;
+  height:100%;
+
+  pointer-events:none;
+
+}
+
+/* TOP BAR */
+
+#top-bar{
+
+  position:absolute;
+
+  top:20px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  width:92%;
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  padding:10px 16px;
+
+  border-radius:40px;
+
+  background:rgba(255,255,255,0.7);
+
+  backdrop-filter:blur(6px);
+
+  border:2px solid var(--blue-light);
+
+}
+
+/* LEVEL */
+
+#level-indicator{
+
+  display:flex;
+  align-items:center;
+  gap:8px;
+
+  font-weight:bold;
+
+  color:var(--blue-dark);
+
+}
+
+/* PROGRESS */
+
+#progress-container{
+
+  flex:1;
+
+  height:10px;
+
+  background:#e6eef6;
+
+  border-radius:10px;
+
+  margin:0 15px;
+
+  overflow:hidden;
+
+}
+
+#progress-bar{
+
+  height:100%;
+  width:0%;
+
+  background:linear-gradient(
+    90deg,
+    var(--blue-light),
+    var(--blue-main)
+  );
+
+}
+
+/* RESOURCES */
+
+#resources{
+
+  display:flex;
+  gap:10px;
+
+}
+
+.resource{
+
+  display:flex;
+  align-items:center;
+
+  gap:6px;
+
+  padding:4px 10px;
+
+  background:white;
+
+  border-radius:20px;
+
+  border:1px solid #d6e6f2;
+
+}
+
+.resource-value{
+
+  font-weight:bold;
+
+  color:var(--blue-dark);
+
+}
+
+/* MENUS */
+
+.screen{
+
+  position:absolute;
+
+  width:100%;
+  height:100%;
+
+  display:none;
+
+  justify-content:center;
+  align-items:center;
+
+}
+
+.screen.active{
+
+  display:flex;
+
+}
+
+.menu-content{
+
+  text-align:center;
+
+  background:rgba(255,255,255,0.8);
+
+  padding:30px;
+
+  border-radius:20px;
+
+  border:2px solid var(--blue-light);
+
+}
+
+/* TITLES */
+
+.epic-title{
+
+  font-size:36px;
+
+  color:var(--blue-dark);
+
+}
+
+.subtitle{
+
+  color:var(--blue-main);
+
+  margin-bottom:20px;
+
+}
+
+/* BUTTON */
+
+.epic-button{
+
+  padding:14px 30px;
+
+  border-radius:40px;
+
+  border:none;
+
+  font-weight:bold;
+
+  font-size:16px;
+
+  cursor:pointer;
+
+  color:white;
+
+  background:linear-gradient(
+    90deg,
+    var(--blue-light),
+    var(--blue-main)
+  );
+
+  transition:.2s;
+
+}
+
+.epic-button:hover{
+
+  transform:scale(1.05);
+
+}
