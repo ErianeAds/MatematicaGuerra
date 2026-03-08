@@ -396,36 +396,24 @@ soldierImg.onerror = () => console.warn('Não carregou soldier.png.');
 const BG_SPEED_FACTOR = 1;
 
 // Função para desenhar o fundo com a estrada
+
 function drawRoadBackground() {
   const cw = canvas.width;
   const ch = canvas.height;
 
-  // Fallback se a imagem não carregou
-  if (!roadReady) {
-    const grad = ctx.createLinearGradient(0, 0, 0, ch);
-    grad.addColorStop(0, PALETTE.skyTop);
-    grad.addColorStop(1, PALETTE.skyBottom);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, cw, ch);
+  const sky = ctx.createLinearGradient(0, 0, 0, ch);
+  sky.addColorStop(0, '#dff1fb');
+  sky.addColorStop(0.55, '#eef8fd');
+  sky.addColorStop(1, '#f6eddc');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, cw, ch);
 
-    ctx.fillStyle = PALETTE.sideSand;
-    ctx.fillRect(0, 0, cw * 0.18, ch);
-    ctx.fillRect(cw * 0.82, 0, cw * 0.18, ch);
-
-    ctx.fillStyle = '#ebe7df';
-    ctx.fillRect(cw * 0.18, 0, cw * 0.64, ch);
-
-    ctx.strokeStyle = PALETTE.laneLine;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(cw * 0.22, 0);
-    ctx.lineTo(cw * 0.22, ch);
-    ctx.moveTo(cw * 0.78, 0);
-    ctx.lineTo(cw * 0.78, ch);
-    ctx.stroke();
-    return;
+  if (roadReady) {
+    const offset = (dist) % ch;
+    ctx.drawImage(roadImg, 0, -offset, cw, ch);
+    ctx.drawImage(roadImg, 0, ch - offset, cw, ch);
   }
-
+}
   // Loop vertical baseado na distância percorrida
   const offset = (dist * BG_SPEED_FACTOR) % ch;
 
