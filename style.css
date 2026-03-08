@@ -1,0 +1,748 @@
+/* 
+ * LEGIÕES MÍTICAS: A IRA DE TROIA
+ * Design Épico Sombrio - Versão Noturna
+ * Fundo escuro com elementos dourados para melhor contraste
+ */
+
+/* ===== RESET E CONFIGURAÇÕES BASE ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+}
+
+/* Fontes */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=MedievalSharp&family=Cormorant+Garamond:wght@300;400;600;700&display=swap');
+
+/* ===== VARIÁVEIS DE COR - TEMA SOMBRIO ===== */
+:root {
+    --primary-gold: #ffd700;
+    --primary-gold-light: #fff1b8;
+    --primary-gold-dark: #b8860b;
+    --primary-bronze: #cd7f32;
+    --primary-bronze-light: #e6b17e;
+    --primary-bronze-dark: #8b5a2b;
+    --primary-blood: #8b0000;
+    --primary-blood-light: #b22222;
+    --primary-imperial: #4b0082;
+    --primary-imperial-light: #6a0dad;
+    
+    /* Fundos escuros */
+    --bg-darkest: #0a0505;
+    --bg-darker: #1a0f0a;
+    --bg-dark: #2a1f15;
+    --bg-medium: #3a2a1a;
+    
+    /* Textos claros */
+    --text-light: #f5f0e6;
+    --text-gold: #ffd700;
+    --text-cream: #e6d5b8;
+    
+    /* Sombras épicas */
+    --shadow-gold: 0 0 30px rgba(255, 215, 0, 0.3);
+    --shadow-gold-strong: 0 0 50px rgba(255, 215, 0, 0.5);
+    --shadow-blood: 0 0 30px rgba(139, 0, 0, 0.4);
+    --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+/* ===== ESTILO DO CORPO ===== */
+body {
+    background: radial-gradient(ellipse at center, #0a0505 0%, #000000 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Cinzel', serif;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ===== CONTAINER PRINCIPAL ===== */
+#game-container {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    height: 100vh;
+    max-height: 900px;
+    background: var(--bg-darkest);
+    box-shadow: 
+        0 0 0 2px var(--primary-gold-dark),
+        0 0 0 5px rgba(0, 0, 0, 0.9),
+        0 20px 40px rgba(0, 0, 0, 0.9),
+        inset 0 0 50px rgba(255, 215, 0, 0.2);
+    overflow: hidden;
+    border-radius: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Efeito de fogo nos cantos */
+#game-container::before,
+#game-container::after {
+    content: '🔥';
+    position: absolute;
+    font-size: 30px;
+    opacity: 0.15;
+    z-index: 20;
+    pointer-events: none;
+    filter: drop-shadow(0 0 10px #ff6b00);
+    animation: fireFlicker 2s infinite alternate;
+}
+
+#game-container::before {
+    top: 10px;
+    left: 10px;
+    transform: rotate(-15deg);
+}
+
+#game-container::after {
+    bottom: 10px;
+    right: 10px;
+    transform: rotate(15deg);
+}
+
+@keyframes fireFlicker {
+    0%, 100% { opacity: 0.1; transform: scale(1) rotate(-15deg); }
+    50% { opacity: 0.2; transform: scale(1.2) rotate(-10deg); }
+}
+
+/* ===== CANVAS ===== */
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    filter: 
+        drop-shadow(0 0 10px rgba(255, 215, 0, 0.2))
+        contrast(1.2)
+        brightness(0.9);
+}
+
+/* ===== CAMADA DA INTERFACE ===== */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* ===== EFEITO GLASS PANEL SOMBRIO ===== */
+.glass-panel {
+    background: linear-gradient(135deg, 
+        rgba(10, 5, 5, 0.95) 0%, 
+        rgba(26, 15, 10, 0.95) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 215, 0, 0.2);
+    border-radius: 15px;
+    box-shadow: 
+        0 4px 30px rgba(0, 0, 0, 0.9),
+        inset 0 0 20px rgba(255, 215, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* ===== BARRA SUPERIOR ===== */
+#top-bar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 92%;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 20;
+    color: var(--text-gold);
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.9),
+        0 0 20px rgba(255, 215, 0, 0.3);
+    background: linear-gradient(135deg, 
+        rgba(10, 5, 5, 0.9) 0%, 
+        rgba(26, 15, 10, 0.9) 100%);
+    backdrop-filter: blur(5px);
+    border: 2px solid rgba(255, 215, 0, 0.2);
+    border-radius: 50px;
+}
+
+/* ===== INDICADOR DE NÍVEL ===== */
+#level-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #2a1f15, #1a0f0a);
+    padding: 8px 18px;
+    border-radius: 40px;
+    border: 2px solid var(--primary-gold-dark);
+    box-shadow: 
+        0 0 20px rgba(255, 215, 0, 0.2),
+        inset 0 0 15px rgba(255, 215, 0, 0.1);
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+#level-indicator .icon {
+    font-size: 1.3rem;
+    filter: drop-shadow(0 0 5px var(--primary-gold));
+}
+
+#level-indicator .text {
+    font-size: 1rem;
+    text-transform: uppercase;
+    color: var(--text-gold);
+}
+
+/* ===== BARRA DE PROGRESSO ===== */
+#progress-container {
+    position: relative;
+    flex-grow: 1;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.8);
+    margin: 0 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            #b8860b 0%,
+            #ffd700 50%,
+            #b8860b 100%);
+    position: relative;
+    z-index: 2;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px #ffd700;
+}
+
+#progress-glow {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    width: calc(100% + 10px);
+    height: calc(100% + 10px);
+    background: radial-gradient(circle at 30% 50%,
+            rgba(255, 215, 0, 0.6) 0%,
+            transparent 70%);
+    filter: blur(8px);
+    z-index: 1;
+    animation: progressPulse 2s infinite;
+}
+
+@keyframes progressPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+/* ===== RECURSOS ===== */
+#resources {
+    display: flex;
+    gap: 15px;
+}
+
+.resource {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 15px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(30, 20, 10, 0.8));
+    border-radius: 30px;
+    border: 2px solid var(--primary-gold-dark);
+    transition: all 0.3s ease;
+}
+
+.resource:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.resource-icon {
+    font-size: 1.3rem;
+    filter: drop-shadow(0 0 5px var(--primary-gold));
+}
+
+.resource-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-gold);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* ===== TELAS DE MENU ===== */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    pointer-events: auto;
+}
+
+.screen.active {
+    display: flex;
+    animation: screenAppear 0.8s ease-out;
+}
+
+@keyframes screenAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ===== FUNDO DO MENU ESCURO ===== */
+.menu-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center,
+            #1a0f0a 0%,
+            #0a0505 100%);
+    opacity: 0.99;
+    z-index: -1;
+    overflow: hidden;
+}
+
+/* Efeito de brasas */
+.menu-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(2px 2px at 10% 20%, rgba(255, 215, 0, 0.2), transparent),
+        radial-gradient(3px 3px at 30% 50%, rgba(255, 69, 0, 0.2), transparent),
+        radial-gradient(2px 2px at 50% 80%, rgba(255, 215, 0, 0.2), transparent),
+        radial-gradient(4px 4px at 70% 30%, rgba(255, 140, 0, 0.2), transparent),
+        radial-gradient(2px 2px at 90% 60%, rgba(255, 215, 0, 0.2), transparent);
+    animation: embersFloat 20s infinite linear;
+}
+
+@keyframes embersFloat {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(-100%) rotate(10deg); }
+}
+
+/* Variações de fundo */
+.menu-background.dark {
+    background: radial-gradient(ellipse at center,
+            #0a0505 0%,
+            #000000 100%);
+}
+
+.menu-background.victory {
+    background: radial-gradient(ellipse at center,
+            #2a1f15 0%,
+            #1a0f0a 100%);
+}
+
+/* ===== CONTEÚDO DO MENU ===== */
+.menu-content {
+    text-align: center;
+    padding: 40px;
+    max-width: 400px;
+    animation: contentAppear 0.8s ease-out;
+    position: relative;
+    z-index: 2;
+    background: rgba(10, 5, 5, 0.7);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 215, 0, 0.2);
+    border-radius: 30px;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+    margin: 20px;
+}
+
+@keyframes contentAppear {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ===== TÍTULO PRINCIPAL ===== */
+.epic-title {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 3.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg,
+            #fff1b8 0%,
+            #ffd700 30%,
+            #b8860b 70%,
+            #fff1b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 
+        0 0 30px rgba(255, 215, 0, 0.3),
+        2px 2px 0 #000,
+        -2px -2px 0 #000;
+    margin-bottom: 10px;
+    letter-spacing: 4px;
+    animation: titleGlow 3s infinite alternate;
+}
+
+@keyframes titleGlow {
+    0% {
+        text-shadow: 
+            0 0 30px rgba(255, 215, 0, 0.3),
+            2px 2px 0 #000,
+            -2px -2px 0 #000;
+    }
+    100% {
+        text-shadow: 
+            0 0 50px rgba(255, 215, 0, 0.5),
+            2px 2px 0 #000,
+            -2px -2px 0 #000;
+    }
+}
+
+/* ===== SUBTÍTULO ===== */
+.subtitle {
+    font-size: 1.2rem;
+    color: var(--text-cream);
+    letter-spacing: 6px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* ===== DECORAÇÃO DO TÍTULO ===== */
+.title-decoration {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    font-size: 2rem;
+    margin: 20px 0;
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.3));
+}
+
+.title-decoration span {
+    animation: ornamentFloat 2.5s infinite alternate;
+    transform-origin: center;
+}
+
+.title-decoration span:nth-child(2) {
+    animation-delay: 0.5s;
+    font-size: 2.5rem;
+}
+
+.title-decoration span:nth-child(3) {
+    animation-delay: 1s;
+}
+
+@keyframes ornamentFloat {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    100% {
+        transform: translateY(-10px) rotate(5deg);
+    }
+}
+
+/* ===== TEXTO DO MENU ===== */
+.menu-text {
+    font-size: 1rem;
+    color: var(--text-cream);
+    line-height: 1.6;
+    margin-bottom: 30px;
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* ===== BOTÃO ÉPICO ===== */
+.epic-button {
+    position: relative;
+    padding: 18px 40px;
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-gold);
+    background: linear-gradient(135deg,
+            #2a1f15 0%,
+            #1a0f0a 100%);
+    border: 2px solid var(--primary-gold-dark);
+    border-radius: 50px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    box-shadow: 
+        0 5px 15px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(255, 215, 0, 0.2);
+    position: relative;
+    z-index: 1;
+}
+
+.epic-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 215, 0, 0.2),
+            transparent);
+    transition: left 0.5s ease;
+    z-index: -1;
+}
+
+.epic-button:hover::before {
+    left: 100%;
+}
+
+.epic-button:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-gold);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.9),
+        0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+.epic-button:active {
+    transform: translateY(2px);
+}
+
+/* Versão menor */
+.epic-button.small {
+    padding: 12px 30px;
+    font-size: 1rem;
+}
+
+/* ===== PAINEL DE ESTATÍSTICAS ===== */
+.stats-panel {
+    background: linear-gradient(135deg,
+            rgba(0, 0, 0, 0.8),
+            rgba(26, 15, 10, 0.8));
+    border: 2px solid rgba(255, 215, 0, 0.2);
+    border-radius: 20px;
+    padding: 20px;
+    margin: 20px 0;
+    backdrop-filter: blur(5px);
+    box-shadow: 
+        0 0 30px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(255, 215, 0, 0.05);
+}
+
+.stats-panel p {
+    font-size: 1.1rem;
+    color: var(--text-cream);
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stats-panel span {
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: var(--text-gold);
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+
+/* ===== TÍTULO DE DERROTA ===== */
+.defeat-title {
+    font-size: 3rem;
+    color: #8b0000;
+    text-shadow: 
+        0 0 30px rgba(139, 0, 0, 0.6),
+        2px 2px 0 #000;
+    margin-bottom: 20px;
+    font-family: 'MedievalSharp', cursive;
+    animation: defeatPulse 2s infinite alternate;
+}
+
+@keyframes defeatPulse {
+    0% {
+        text-shadow: 0 0 30px rgba(139, 0, 0, 0.6);
+    }
+    100% {
+        text-shadow: 0 0 50px rgba(255, 0, 0, 0.6);
+    }
+}
+
+/* ===== DECORAÇÃO DE CAVEIRA ===== */
+.skull-decoration {
+    font-size: 4rem;
+    animation: skullFloat 2s infinite alternate;
+    filter: drop-shadow(0 0 20px #8b0000);
+}
+
+@keyframes skullFloat {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        transform: translateY(-10px) scale(1.1);
+    }
+}
+
+/* ===== TÍTULO DE VITÓRIA ===== */
+.victory-title {
+    font-size: 3.5rem;
+    color: var(--primary-gold);
+    text-shadow: 
+        0 0 30px rgba(255, 215, 0, 0.6),
+        2px 2px 0 #000;
+    margin-bottom: 20px;
+    font-family: 'MedievalSharp', cursive;
+    animation: victoryPulse 2s infinite alternate;
+}
+
+@keyframes victoryPulse {
+    0% {
+        text-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+    }
+    100% {
+        text-shadow: 0 0 60px rgba(255, 255, 255, 0.6);
+    }
+}
+
+/* ===== DECORAÇÃO DE LOUROS ===== */
+.laurel-decoration {
+    font-size: 4rem;
+    animation: laurelSpin 12s linear infinite;
+    filter: drop-shadow(0 0 20px #ffd700);
+}
+
+@keyframes laurelSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===== EFEITOS DE ILUMINAÇÃO ===== */
+
+/* Brilho nos cantos */
+.corner-light {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.1), transparent);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.corner-light.top-left {
+    top: -50px;
+    left: -50px;
+}
+
+.corner-light.top-right {
+    top: -50px;
+    right: -50px;
+}
+
+.corner-light.bottom-left {
+    bottom: -50px;
+    left: -50px;
+}
+
+.corner-light.bottom-right {
+    bottom: -50px;
+    right: -50px;
+}
+
+/* Efeito de fogueira */
+.fire-effect {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(255, 69, 0, 0.2), transparent);
+    filter: blur(15px);
+    animation: firePulse 2s infinite alternate;
+}
+
+@keyframes firePulse {
+    0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(1); }
+    50% { opacity: 0.6; transform: translateX(-50%) scale(1.2); }
+}
+
+/* ===== MEDIA QUERIES ===== */
+@media (max-width: 500px) {
+    .epic-title {
+        font-size: 2.5rem;
+        letter-spacing: 3px;
+    }
+    
+    .subtitle {
+        font-size: 1rem;
+        letter-spacing: 4px;
+    }
+    
+    .menu-content {
+        padding: 20px;
+    }
+    
+    .epic-button {
+        padding: 15px 30px;
+        font-size: 1rem;
+    }
+    
+    .defeat-title,
+    .victory-title {
+        font-size: 2.5rem;
+    }
+}
+
+/* ===== CLASSES DE CONTRASTE ===== */
+.text-gold {
+    color: var(--text-gold);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.text-blood {
+    color: var(--primary-blood);
+    text-shadow: 0 0 10px rgba(139, 0, 0, 0.5);
+}
+
+.text-light {
+    color: var(--text-light);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.bg-dark {
+    background: rgba(10, 5, 5, 0.9);
+    backdrop-filter: blur(5px);
+}
+
+.border-gold {
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
